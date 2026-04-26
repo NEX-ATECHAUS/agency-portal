@@ -1,20 +1,15 @@
 // Google Sheets API Service
 // All data is stored in a Google Spreadsheet with one sheet per entity
 
-const SHEETS_API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
-const SPREADSHEET_ID = process.env.REACT_APP_SPREADSHEET_ID;
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-
-// We use a service account token from our Vercel API route for writes
-// and the API key for reads on public data
+// All reads and writes go through Vercel serverless API routes
+// using the Google service account — no public API key needed.
 
 // ──────────────────────────────────────────────
 // Generic read/write helpers
 // ──────────────────────────────────────────────
 
 export async function readSheet(sheetName) {
-  const url = `${SHEETS_API_BASE}/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
-  const res = await fetch(url);
+  const res = await fetch(`/api/sheets/read?sheetName=${encodeURIComponent(sheetName)}`);
   if (!res.ok) throw new Error(`Failed to read sheet: ${sheetName}`);
   const data = await res.json();
   return rowsToObjects(data.values || []);
