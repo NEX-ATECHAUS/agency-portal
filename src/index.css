@@ -17,9 +17,9 @@
   --border-strong: rgba(255,255,255,0.15);
 
   /* Text — increased contrast across all levels */
-  --text-primary: #fefeff;
-  --text-secondary: #cccce1;
-  --text-muted: #8383a6;
+  --text-primary:   #f4f4fd;
+  --text-secondary: #b8b8d0;
+  --text-muted:     #6e6e90;
 
   --accent:       #6c63ff;
   --accent-light: #a89fff;
@@ -285,11 +285,31 @@ tbody tr:hover td { background: rgba(255,255,255,0.025); color: var(--text-prima
   border-bottom: 1px solid var(--border);
 }
 .modal-header h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
+.modal-header h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
 .modal-body {
   padding: 32px;
   display: flex;
   flex-direction: column;
   gap: 22px;
+}
+/* Forms sitting directly inside .modal (without .modal-body wrapper) */
+.modal > form,
+.modal > div:not(.modal-header):not(.modal-footer):not(.modal-body) {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+/* But modal-footer inside a form should not get that padding */
+.modal > form > .modal-footer,
+.modal > form > div > .modal-footer {
+  padding: 20px 32px;
+  margin: 0 -32px -32px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--bg-secondary);
 }
 .modal-footer {
   padding: 20px 32px;
