@@ -179,22 +179,9 @@ export default function Layout() {
   );
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      {/* Desktop sidebar */}
-      <div style={{ display: 'none' }} className="desktop-sidebar">
-        {sidebarContent}
-      </div>
-      <style>{`
-        @media (min-width: 768px) {
-          .desktop-sidebar { display: block !important; }
-          .mobile-toggle { display: none !important; }
-        }
-      `}</style>
-
-      {/* Desktop sidebar (always shown) */}
-      <div className="desktop-sidebar" style={{ flexShrink: 0 }}>
-        {sidebarContent}
-      </div>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
+      {/* Sidebar */}
+      {sidebarContent}
 
       {/* Mobile overlay */}
       {mobileOpen && (
