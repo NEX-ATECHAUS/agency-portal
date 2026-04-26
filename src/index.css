@@ -17,9 +17,9 @@
   --border-strong: rgba(255,255,255,0.15);
 
   /* Text — increased contrast across all levels */
-  --text-primary:   #f4f4fd;
-  --text-secondary: #b8b8d0;
-  --text-muted:     #6e6e90;
+  --text-primary: #fefeff;
+  --text-secondary: #cccce1;
+  --text-muted: #8383a6;
 
   --accent:       #6c63ff;
   --accent-light: #a89fff;
@@ -91,14 +91,14 @@ a:hover { text-decoration: underline; }
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: 28px 32px;
 }
 .card-elevated {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  padding: var(--space-lg);
+  padding: 28px 32px;
 }
 
 /* ── Buttons ── */
@@ -173,16 +173,16 @@ a:hover { text-decoration: underline; }
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 .form-group label {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.7px;
 }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
 input, textarea, select {
   width: 100%;
@@ -281,18 +281,18 @@ tbody tr:hover td { background: rgba(255,255,255,0.025); color: var(--text-prima
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 28px;
+  padding: 26px 32px;
   border-bottom: 1px solid var(--border);
 }
-.modal-header h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.modal-header h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
 .modal-body {
-  padding: 28px;
+  padding: 32px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 .modal-footer {
-  padding: 18px 28px;
+  padding: 20px 32px;
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
@@ -413,7 +413,7 @@ tbody tr:hover td { background: rgba(255,255,255,0.025); color: var(--text-prima
 .split-detail {
   overflow-y: auto;
   background: var(--bg-primary);
-  padding: var(--space-lg);
+  padding: 32px 36px;
 }
 .split-item {
   padding: 16px 20px;
