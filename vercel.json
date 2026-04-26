@@ -35,6 +35,14 @@
       "dest": "/robots.txt"
     },
     {
+      "src": "/logo192.png",
+      "dest": "/logo192.png"
+    },
+    {
+      "src": "/logo512.png",
+      "dest": "/logo512.png"
+    },
+    {
       "handle": "filesystem"
     },
     {
