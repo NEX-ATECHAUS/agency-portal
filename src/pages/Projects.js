@@ -16,10 +16,25 @@ const DEFAULT_STAGES = [
 const STATUS_OPTIONS = ['active', 'completed', 'on-hold', 'cancelled'];
 const TYPE_OPTIONS   = ['Web Development', 'Mobile App', 'Design', 'Branding', 'SEO', 'Consulting', 'Other'];
 
+function parseCompletion(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try { const p = JSON.parse(raw); if (typeof p === 'object') return p; } catch {}
+  }
+  return {};
+}
+
 function parseStages(raw) {
   if (!raw) return DEFAULT_STAGES;
-  if (Array.isArray(raw)) return raw;
-  try { return JSON.parse(raw); } catch { return DEFAULT_STAGES; }
+  if (Array.isArray(raw) && raw.length > 0) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+  }
+  return DEFAULT_STAGES;
 }
 
 function stageNames(stages) { return stages.map(s => s.name); }
@@ -110,7 +125,7 @@ export default function Projects() {
     try {
       const stages   = parseStages(project.payment_stages);
       const stageObj = stages.find(s => s.name === stage);
-      const stageCompletion = typeof project.stage_completion === 'object' ? project.stage_completion : {};
+      const stageCompletion = parseCompletion(project.stage_completion);
 
       if (stageCompletion[stage]) { toast.info('Stage already completed'); return; }
 
@@ -195,7 +210,7 @@ export default function Projects() {
             <div className="empty-state"><p>No projects</p></div>
           ) : filtered.map(project => {
             const stages = parseStages(project.payment_stages);
-            const completion = typeof project.stage_completion === 'object' ? project.stage_completion : {};
+            const completion = parseCompletion(project.stage_completion);
             const done = stageNames(stages).filter(s => completion[s]).length;
             const pct  = stages.length ? Math.round((done / stages.length) * 100) : 0;
             return (
@@ -376,7 +391,7 @@ export default function Projects() {
 
 function ProjectDetail({ project, onStageComplete, completing }) {
   const stages = parseStages(project.payment_stages);
-  const stageCompletion = typeof project.stage_completion === 'object' ? project.stage_completion : {};
+  const stageCompletion = parseCompletion(project.stage_completion);
   const currentStageIdx = stageNames(stages).indexOf(project.current_stage);
   const fee = parseFloat(project.total_fee) || 0;
 
