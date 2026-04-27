@@ -469,7 +469,7 @@ export default function Invoices() {
         </div>
       )}
 
-      {preview && <InvoicePreview invoice={preview} settings={settings} onClose={() => setPreview(null)} />}
+      {preview && <InvoicePreview invoice={preview} settings={settings} clients={clients} onClose={() => setPreview(null)} />}
     </div>
   );
 }
@@ -477,7 +477,7 @@ export default function Invoices() {
 // ─────────────────────────────────────────────────────────────
 // Invoice Preview — NEX-A design
 // ─────────────────────────────────────────────────────────────
-function InvoicePreview({ invoice, settings, onClose }) {
+function InvoicePreview({ invoice, settings, clients = [], onClose }) {
   const printRef = useRef();
   const accent      = settings.accent_color || '#6c63ff';
   const companyName = settings.company_name || 'NEX-A PORTAL';
@@ -543,19 +543,19 @@ function InvoicePreview({ invoice, settings, onClose }) {
           <div ref={printRef}>
             <div style={{
               background: '#ffffff',
-              padding: '36px 40px 40px',
               fontFamily: "'Instrument Sans', system-ui, sans-serif",
               color: '#06090A',
             }}>
 
-              {/* Header */}
+              {/* Black header bar */}
               <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                borderBottom: '1px solid #e5e7eb', paddingBottom: 20, marginBottom: 28,
+                background: '#06090A',
+                padding: '26px 40px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   {settings.logo_url ? (
-                    <img src={settings.logo_url} alt={companyName} style={{ height: 48, width: 'auto', objectFit: 'contain' }} />
+                    <img src={settings.logo_url} alt={companyName} style={{ height: 52, width: 'auto', objectFit: 'contain' }} />
                   ) : (
                     <div style={{
                       width: 48, height: 48, background: accent, borderRadius: 10,
@@ -563,17 +563,21 @@ function InvoicePreview({ invoice, settings, onClose }) {
                       fontSize: 20, fontWeight: 700, color: '#fff',
                     }}>{companyName[0]}</div>
                   )}
-                  <div>
-                    <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px' }}>INVOICE</div>
-                    {invoice.project_title && <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{invoice.project_title}{invoice.stage ? ` · ${invoice.stage}` : ''}</div>}
-                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.08em', color: '#ffffff' }}>INVOICE</div>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 12, color: '#6b7280', lineHeight: 1.8 }}>
-                  <div><strong style={{ color: '#06090A' }}>Invoice #:</strong> {invoice.invoice_number}</div>
-                  <div><strong style={{ color: '#06090A' }}>Date:</strong> {issueDate}</div>
-                  <div><strong style={{ color: '#06090A' }}>Due:</strong> {invoice.due_date}</div>
+                <div style={{ textAlign: 'right', fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 2 }}>
+                  <div><strong style={{ color: '#ffffff' }}>Invoice #:</strong> {invoice.invoice_number}</div>
+                  <div><strong style={{ color: '#ffffff' }}>Date:</strong> {issueDate}</div>
+                  <div><strong style={{ color: '#ffffff' }}>Due:</strong> {invoice.due_date}</div>
                 </div>
               </div>
+
+              <div style={{ padding: '32px 40px 40px' }}>
+                {invoice.project_title && (
+                  <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
+                    {invoice.project_title}{invoice.stage ? ` · ${invoice.stage}` : ''}
+                  </div>
+                )}
 
               {/* From / Bill to */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 32 }}>
@@ -589,7 +593,7 @@ function InvoicePreview({ invoice, settings, onClose }) {
                 <div>
                   <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#6b7280', marginBottom: 8 }}>Bill To</div>
                   <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                    <strong>{invoice.client_name}</strong>
+                    <strong>{invoice.client_name && !invoice.client_name.startsWith('C177') ? invoice.client_name : (clients?.find(c => c.id === invoice.client_id)?.name || invoice.client_name)}</strong>
                     {invoice.client_address && <><br />{invoice.client_address}</>}
                     {invoice.client_email && <><br />{invoice.client_email}</>}
                   </div>
@@ -671,6 +675,7 @@ function InvoicePreview({ invoice, settings, onClose }) {
               <div style={{ fontSize: 12, color: '#9ca3af', borderTop: '1px solid #e5e7eb', paddingTop: 16, textAlign: 'center' }}>
                 {settings.invoice_footer || `Please include the Invoice # as your payment reference.`}
               </div>
+              </div>{/* end padding wrapper */}
             </div>
           </div>
         </div>
