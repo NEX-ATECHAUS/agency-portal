@@ -165,7 +165,7 @@ export default function Invoices() {
 
   async function handleSave(e) {
     e.preventDefault();
-    const { subtotal, gst, total } = calcTotals(form.line_items, form.charge_gst);
+    const { total } = calcTotals(form.line_items, form.charge_gst);
     const payload = {
       ...form,
       line_items: JSON.stringify(form.line_items),
