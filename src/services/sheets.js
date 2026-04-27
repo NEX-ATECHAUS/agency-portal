@@ -70,7 +70,7 @@ function rowsToObjects(rows) {
       obj[h] = row[i] ?? '';
     });
     // Parse JSON fields
-    ['stage_completion', 'payment_schedule', 'deliverables'].forEach(field => {
+    ['stage_completion', 'payment_stages', 'payment_schedule', 'deliverables'].forEach(field => {
       if (obj[field]) {
         try { obj[field] = JSON.parse(obj[field]); } catch {}
       }
