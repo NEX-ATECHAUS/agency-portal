@@ -56,7 +56,7 @@ function invoiceHtml({ invoice, project, companyName, settings }) {
   .footer{background:#f5f5f5;padding:20px 32px;text-align:center;font-size:12px;color:#999}
   </style></head><body>
   <div class="container">
-    <div class="header"><h1>${companyName || 'NEX-A PORTAL'}</h1><p>Invoice ${invoice.invoice_number}</p></div>
+    <div class="header"><h1>${companyName || 'NEX-A PORTAL'}</h1><p>${invoice.is_reminder ? '⏰ Payment Reminder — ' : ''}Invoice ${invoice.invoice_number}</p></div>
     <div class="body">
       <div class="label">Amount Due</div>
       <div class="amount">$${Number(invoice.amount||0).toLocaleString('en-AU',{minimumFractionDigits:2})}</div>
@@ -91,7 +91,9 @@ module.exports = async (req, res) => {
       subject = `Proposal: ${proposal.title} — ${companyName || 'NEX-A PORTAL'}`;
       html = proposalHtml({ proposal, proposalUrl, companyName });
     } else if (type === 'invoice') {
-      subject = `Invoice ${invoice.invoice_number} — $${Number(invoice.amount||0).toLocaleString()} Due ${invoice.due_date||'on receipt'}`;
+      subject = invoice.is_reminder
+        ? `Payment Reminder — Invoice ${invoice.invoice_number} — $${Number(invoice.amount||0).toLocaleString('en-AU',{minimumFractionDigits:2})} Due ${invoice.due_date||'on receipt'}`
+        : `Invoice ${invoice.invoice_number} — $${Number(invoice.amount||0).toLocaleString('en-AU',{minimumFractionDigits:2})} Due ${invoice.due_date||'on receipt'}`;
       html = invoiceHtml({ invoice, project, companyName, settings });
     } else {
       return res.status(400).json({ error: 'Invalid type. Use "proposal" or "invoice"' });
