@@ -512,7 +512,8 @@ export default function Invoices() {
 }
 
 
-// ── Invoice Preview — NEX-A design (matches ProposalView) ──
+
+// ── Invoice Preview ────────────────────────────────────────
 const LOGO = 'https://static.wixstatic.com/media/f71431_61430c2cad9d4aa3b3c60140cf727352~mv2.png';
 
 const BRAND = {
@@ -543,6 +544,9 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
   const dueDate   = fmtDate(invoice.due_date);
   const companyName = settings.company_name || 'NEX-A TECHNOLOGY SOLUTIONS';
 
+  // White logo filter — works on both dark and coloured logos
+  const WHITE_LOGO = { filter: 'brightness(0) invert(1)' };
+
   function handlePrint() {
     const content = printRef.current.innerHTML;
     const win = window.open('', '_blank');
@@ -554,7 +558,6 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Instrument Sans',system-ui,sans-serif;background:#f3f4f6;color:#06090A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{margin:0;size:A4}
-  @keyframes none{}
 </style></head><body>${content}</body></html>`);
     win.document.close();
     setTimeout(() => { win.focus(); win.print(); }, 700);
@@ -563,9 +566,9 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-lg" onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 820, maxHeight: '94vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', border: '1px solid var(--border-strong)' }}>
+        style={{ maxWidth: 820, maxHeight: '94vh', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Toolbar */}
+        {/* App toolbar — not printed */}
         <div className="modal-header">
           <div>
             <h3 style={{ fontSize: 15 }}>{invoice.invoice_number}</h3>
@@ -580,42 +583,26 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
           </div>
         </div>
 
-        {/* Scrollable invoice */}
+        {/* Printable invoice body */}
         <div style={{ overflowY: 'auto', flex: 1, background: BRAND.bg }}>
           <div ref={printRef}>
-            <div style={{
-              fontFamily: "'Instrument Sans', system-ui, -apple-system, sans-serif",
-              color: BRAND.ink,
-              background: BRAND.bg,
-            }}>
+            <div style={{ fontFamily: "'Instrument Sans', system-ui, -apple-system, sans-serif", color: BRAND.ink, background: BRAND.bg }}>
               <style>{`@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');`}</style>
 
-              {/* ── Top nav bar (matches proposal) ── */}
-              <div style={{ background: BRAND.black, padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <img src={LOGO} alt="NEX-A"
-                    style={{ height: 32, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
-                    onError={e => { e.target.style.display = 'none'; }} />
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    {companyName}
-                  </span>
-                </div>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>Tax Invoice</span>
-              </div>
-
+              {/* ── Hero card with logo integrated ── */}
               <div style={{ maxWidth: 760, margin: '0 auto', padding: '36px 20px 56px' }}>
-
-                {/* ── Black hero card (matches proposal hero) ── */}
-                <div style={{
-                  background: BRAND.black, borderRadius: 16,
-                  padding: '36px 44px', marginBottom: 3,
-                  overflow: 'hidden', position: 'relative',
-                }}>
-                  {/* Green glow orb */}
+                <div style={{ background: BRAND.black, borderRadius: 16, padding: '36px 44px', marginBottom: 3, overflow: 'hidden', position: 'relative' }}>
+                  {/* Glow orb */}
                   <div style={{ position: 'absolute', top: -60, right: -60, width: 240, height: 240, background: BRAND.green, borderRadius: '50%', opacity: 0.08, pointerEvents: 'none' }} />
 
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: BRAND.green, marginBottom: 14 }}>
-                    Tax Invoice
+                  {/* Logo + company row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <img src={LOGO} alt="NEX-A" style={{ height: 36, width: 'auto', objectFit: 'contain', ...WHITE_LOGO }}
+                        onError={e => { e.target.style.display = 'none'; }} />
+                      <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{companyName}</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: BRAND.green }}>Tax Invoice</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
                     <div>
@@ -627,9 +614,8 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                         {invoice.project_title && <span> · {invoice.project_title}</span>}
                       </p>
                     </div>
-                    {/* Stage pill */}
                     {invoice.stage && (
-                      <span style={{ padding: '6px 16px', background: 'rgba(201,252,210,0.12)', border: `1px solid rgba(201,252,210,0.3)`, borderRadius: 99, fontSize: 12, color: BRAND.green, fontWeight: 500, alignSelf: 'flex-start' }}>
+                      <span style={{ padding: '6px 16px', background: 'rgba(201,252,210,0.12)', border: '1px solid rgba(201,252,210,0.3)', borderRadius: 99, fontSize: 12, color: BRAND.green, fontWeight: 500, alignSelf: 'flex-start' }}>
                         {invoice.stage}
                       </span>
                     )}
@@ -652,8 +638,8 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                   </div>
                 </div>
 
-                {/* ── White content card (matches proposal sections) ── */}
-                <div style={{ background: BRAND.white, borderRadius: '0 0 16px 16px', marginBottom: 3 }}>
+                {/* ── White content card ── */}
+                <div style={{ background: BRAND.white, borderRadius: '0 0 16px 16px' }}>
 
                   {/* From / Bill To */}
                   <div style={{ padding: '28px 44px', borderBottom: `1px solid ${BRAND.border}`, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
@@ -679,30 +665,30 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                   {/* Line items */}
                   <div style={{ padding: '28px 44px', borderBottom: `1px solid ${BRAND.border}` }}>
                     <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted, marginBottom: 16 }}>Line Items</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13 }}>
                       <thead>
-                        <tr style={{ borderBottom: `2px solid ${BRAND.ink}` }}>
-                          <th style={{ padding: '8px 0', textAlign: 'left', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted }}>Description</th>
-                          <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted, width: 140 }}>Amount (AUD)</th>
+                        <tr>
+                          <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted, background: BRAND.bg, borderRadius: '8px 0 0 8px' }}>Description</th>
+                          <th style={{ padding: '12px 18px', textAlign: 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted, background: BRAND.bg, borderRadius: '0 8px 8px 0', width: 140 }}>Amount (AUD)</th>
                         </tr>
                       </thead>
                       <tbody>
                         {lineItems.length > 0 ? lineItems.map((item, i) => (
                           <tr key={i} style={{ borderBottom: `1px solid ${BRAND.border}` }}>
-                            <td style={{ padding: '14px 0', color: '#222', lineHeight: 1.6, verticalAlign: 'top' }}>{item.description || '—'}</td>
-                            <td style={{ padding: '14px 0', textAlign: 'right', fontWeight: 600, color: BRAND.ink }}>${fmt(item.amount)}</td>
+                            <td style={{ padding: '14px 18px', color: '#222', lineHeight: 1.6, verticalAlign: 'top' }}>{item.description || '—'}</td>
+                            <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 600, color: BRAND.ink }}>${fmt(item.amount)}</td>
                           </tr>
                         )) : (
                           <tr style={{ borderBottom: `1px solid ${BRAND.border}` }}>
-                            <td style={{ padding: '14px 0', color: BRAND.muted }}>Professional Services</td>
-                            <td style={{ padding: '14px 0', textAlign: 'right', fontWeight: 600 }}>${fmt(invoice.amount)}</td>
+                            <td style={{ padding: '14px 18px', color: BRAND.muted }}>Professional Services</td>
+                            <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: 600 }}>${fmt(invoice.amount)}</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
 
                     {/* Totals */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                       <div style={{ width: 280 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${BRAND.border}`, fontSize: 13 }}>
                           <span style={{ color: BRAND.muted }}>Subtotal (ex GST)</span>
@@ -722,7 +708,7 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                     </div>
                   </div>
 
-                  {/* Payment details (matches proposal payment schedule style) */}
+                  {/* Payment details */}
                   {(settings.bank_bsb || settings.bank_account || settings.paypal_link || settings.stripe_link) && (
                     <div style={{ padding: '28px 44px', borderBottom: `1px solid ${BRAND.border}` }}>
                       <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted, marginBottom: 14 }}>Payment Details</div>
@@ -765,17 +751,23 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                     </div>
                   )}
 
-                  {/* Footer */}
+                  {/* Commercial terms */}
+                  <div style={{ padding: '24px 44px', borderBottom: `1px solid ${BRAND.border}`, background: '#fafafa' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: BRAND.muted, marginBottom: 12 }}>Commercial Terms</div>
+                    <div style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.85, whiteSpace: 'pre-line' }}>{COMMERCIAL_TERMS_SHORT}</div>
+                  </div>
+
+                  {/* Footer — logo white on light background using dark logo at low opacity */}
                   <div style={{ padding: '20px 44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 12, color: '#d1d5db' }}>
+                    <div style={{ fontSize: 12, color: '#9ca3af' }}>
                       {settings.invoice_footer || 'Please include the Invoice # as your payment reference.'}
-                    <div style={{ marginTop: 12, fontSize: 11, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{COMMERCIAL_TERMS_SHORT}</div>
                     </div>
-                    <img src={LOGO} alt={companyName} style={{ height: 18, opacity: 0.3, filter: 'brightness(0) invert(1)' }}
+                    <img src={LOGO} alt={companyName}
+                      style={{ height: 20, opacity: 0.18, filter: 'grayscale(1)' }}
                       onError={e => { e.target.style.display = 'none'; }} />
                   </div>
-                </div>
 
+                </div>
               </div>
             </div>
           </div>
