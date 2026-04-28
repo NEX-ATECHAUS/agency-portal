@@ -51,6 +51,67 @@
   --space-xl:  48px;
 }
 
+/* ── Light mode ── */
+[data-theme="light"] {
+  --bg-primary:    #f3f4f6;
+  --bg-secondary:  #ffffff;
+  --bg-tertiary:   #f9fafb;
+  --bg-elevated:   #ffffff;
+
+  --border:        #e5e7eb;
+  --border-strong: #d1d5db;
+
+  --text-primary:   #06090A;
+  --text-secondary: #374151;
+  --text-muted:     #6b7280;
+
+  --accent:       #06090A;
+  --accent-light: #374151;
+  --accent-dim:   rgba(6,9,10,0.06);
+  --accent-hover: rgba(6,9,10,0.08);
+
+  --success:      #059669;
+  --success-dim:  rgba(5,150,105,0.1);
+  --warning:      #d97706;
+  --warning-dim:  rgba(217,119,6,0.1);
+  --danger:       #dc2626;
+  --danger-dim:   rgba(220,38,38,0.1);
+  --info:         #2563eb;
+  --info-dim:     rgba(37,99,235,0.1);
+
+  --shadow:    0 4px 16px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .btn-primary {
+  background: #06090A;
+  color: #c9fcd2;
+  box-shadow: 0 2px 8px rgba(6,9,10,0.2);
+}
+[data-theme="light"] .btn-primary:hover:not(:disabled) {
+  background: #1a1a2e;
+  box-shadow: 0 4px 14px rgba(6,9,10,0.3);
+}
+[data-theme="light"] .badge-gray {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #06090A;
+}
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  border-color: #06090A;
+  box-shadow: 0 0 0 3px rgba(6,9,10,0.08);
+}
+
+
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
