@@ -479,20 +479,32 @@ export default function Invoices() {
 // ─────────────────────────────────────────────────────────────
 function InvoicePreview({ invoice, settings, clients = [], onClose }) {
   const printRef = useRef();
-  const accent      = settings.accent_color || '#6c63ff';
-  const companyName = settings.company_name || 'NEX-A PORTAL';
-  const issueDate   = invoice.created_at ? invoice.created_at.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
 
+  // ── Resolve client name (handle old invoices that stored ID instead of name) ──
+  const clientName = (invoice.client_name && !invoice.client_name.match(/^C\d{13}/))
+    ? invoice.client_name
+    : (clients.find(c => c.id === invoice.client_id)?.name || invoice.client_name || '—');
+
+  // ── Resolve line items robustly ──
   let lineItems = [];
   try { lineItems = JSON.parse(invoice.line_items || '[]'); } catch {}
-  if (!lineItems.length && invoice.stage_description) {
-    lineItems = [{ description: invoice.stage_description, amount: invoice.amount }];
+  // Fallback: old invoices without line_items stored
+  if (!Array.isArray(lineItems) || lineItems.length === 0) {
+    const fallbackAmount = parseFloat(invoice.amount) || 0;
+    const fallbackDesc   = invoice.stage_description || invoice.stage || 'Professional Services';
+    if (fallbackAmount > 0 || fallbackDesc) {
+      lineItems = [{ description: fallbackDesc, amount: fallbackAmount }];
+    }
   }
 
   const chargeGst = invoice.charge_gst !== 'false' && invoice.charge_gst !== false;
-  const subtotal  = lineItems.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+  const subtotal  = lineItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const gst       = chargeGst ? subtotal * 0.1 : 0;
   const total     = subtotal + gst;
+
+  const issueDate    = invoice.created_at ? invoice.created_at.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
+  const companyName  = settings.company_name  || 'NEX-A';
+  const accent       = settings.accent_color  || '#6c63ff';
 
   function handlePrint() {
     const content = printRef.current.innerHTML;
@@ -501,10 +513,10 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
 <html><head>
 <meta charset="utf-8">
 <title>${invoice.invoice_number}</title>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Instrument Sans',system-ui,sans-serif;background:#fff;color:#06090A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-family:'Instrument Sans',system-ui,sans-serif;background:#fff;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{margin:0;size:A4}
 </style>
 </head><body>${content}</body></html>`);
@@ -512,170 +524,163 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
     setTimeout(() => { win.focus(); win.print(); }, 700);
   }
 
-  // Shared cell styles
-  const th = {
-    padding: '10px 12px', textAlign: 'left', fontSize: 11,
-    textTransform: 'uppercase', letterSpacing: '0.08em',
-    color: '#6b7280', borderBottom: '1px solid #e5e7eb',
-    background: '#f9fafb',
-  };
-  const td = (right = false) => ({
-    padding: '12px 12px', fontSize: 13,
-    borderBottom: '1px solid #e5e7eb',
-    textAlign: right ? 'right' : 'left', verticalAlign: 'top',
-  });
-
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-lg" onClick={e => e.stopPropagation()} style={{ maxWidth: 780 }}>
+      <div className="modal modal-lg" onClick={e => e.stopPropagation()} style={{ maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Modal toolbar */}
         <div className="modal-header">
-          <h3>{invoice.invoice_number}</h3>
+          <div>
+            <h3 style={{ fontSize: 15 }}>{invoice.invoice_number}</h3>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{clientName} · ${fmt(total)}</div>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary btn-sm" onClick={handlePrint}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Download / Print
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Print / Download
             </button>
             <button onClick={onClose} className="btn btn-ghost btn-sm"><X size={16} /></button>
           </div>
         </div>
 
-        <div style={{ overflowY: 'auto', maxHeight: '80vh' }}>
+        {/* Scrollable invoice body */}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
           <div ref={printRef}>
-            <div style={{
-              background: '#ffffff',
-              fontFamily: "'Instrument Sans', system-ui, sans-serif",
-              color: '#06090A',
-            }}>
+            <div style={{ background: '#fff', fontFamily: "'Instrument Sans', system-ui, sans-serif", color: '#111' }}>
 
-              {/* Black header bar */}
-              <div style={{
-                background: '#06090A',
-                padding: '26px 40px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  {settings.logo_url ? (
-                    <img src={settings.logo_url} alt={companyName} style={{ height: 52, width: 'auto', objectFit: 'contain' }} />
-                  ) : (
-                    <div style={{
-                      width: 48, height: 48, background: accent, borderRadius: 10,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 20, fontWeight: 700, color: '#fff',
-                    }}>{companyName[0]}</div>
-                  )}
-                  <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.08em', color: '#ffffff' }}>INVOICE</div>
+              {/* ── Header bar ── */}
+              <div style={{ background: '#06090A', padding: '28px 44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {settings.logo_url
+                    ? <img src={settings.logo_url} alt={companyName} style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
+                    : <div style={{ height: 36, width: 36, background: accent, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: '#fff' }}>{companyName[0]}</div>
+                  }
+                  <span style={{ color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{companyName}</span>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 2 }}>
-                  <div><strong style={{ color: '#ffffff' }}>Invoice #:</strong> {invoice.invoice_number}</div>
-                  <div><strong style={{ color: '#ffffff' }}>Date:</strong> {issueDate}</div>
-                  <div><strong style={{ color: '#ffffff' }}>Due:</strong> {invoice.due_date}</div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 6 }}>INVOICE</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.9 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.75)' }}>#{invoice.invoice_number}</span><br />
+                    <span>Issued {issueDate}</span><br />
+                    <span style={{ color: invoice.status === 'overdue' ? '#f87171' : 'rgba(255,255,255,0.75)' }}>Due {invoice.due_date}</span>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ padding: '32px 40px 40px' }}>
-                {invoice.project_title && (
-                  <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
-                    {invoice.project_title}{invoice.stage ? ` · ${invoice.stage}` : ''}
+              <div style={{ padding: '36px 44px' }}>
+
+                {/* ── From / Bill To ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 36, paddingBottom: 28, borderBottom: '1px solid #f0f0f0' }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#aaa', marginBottom: 10 }}>From</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{companyName}</div>
+                    <div style={{ fontSize: 12, color: '#666', lineHeight: 1.8 }}>
+                      {settings.company_address && <div>{settings.company_address}</div>}
+                      {settings.company_email && <div>{settings.company_email}</div>}
+                      {settings.company_phone && <div>{settings.company_phone}</div>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#aaa', marginBottom: 10 }}>Bill To</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{clientName}</div>
+                    <div style={{ fontSize: 12, color: '#666', lineHeight: 1.8 }}>
+                      {invoice.client_address && <div>{invoice.client_address}</div>}
+                      {invoice.client_email && <div>{invoice.client_email}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Project / Stage tag ── */}
+                {(invoice.project_title || invoice.stage) && (
+                  <div style={{ marginBottom: 24, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {invoice.project_title && (
+                      <span style={{ padding: '4px 12px', background: '#f5f5f5', borderRadius: 99, fontSize: 12, color: '#555', fontWeight: 500 }}>
+                        {invoice.project_title}
+                      </span>
+                    )}
+                    {invoice.stage && (
+                      <span style={{ padding: '4px 12px', background: '#f0f0ff', borderRadius: 99, fontSize: 12, color: accent, fontWeight: 500 }}>
+                        {invoice.stage}
+                      </span>
+                    )}
                   </div>
                 )}
 
-              {/* From / Bill to */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 32 }}>
-                <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#6b7280', marginBottom: 8 }}>From</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                    <strong>{companyName}</strong>
-                    {settings.company_address && <><br />{settings.company_address}</>}
-                    {settings.company_email && <><br />{settings.company_email}</>}
-                    {settings.company_phone && <><br />{settings.company_phone}</>}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#6b7280', marginBottom: 8 }}>Bill To</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                    <strong>{invoice.client_name && !invoice.client_name.startsWith('C177') ? invoice.client_name : (clients?.find(c => c.id === invoice.client_id)?.name || invoice.client_name)}</strong>
-                    {invoice.client_address && <><br />{invoice.client_address}</>}
-                    {invoice.client_email && <><br />{invoice.client_email}</>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Line items table */}
-              <div style={{ marginBottom: 0 }}>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#6b7280', marginBottom: 8 }}>Line Items</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                {/* ── Line items ── */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0, fontSize: 13 }}>
                   <thead>
-                    <tr>
-                      <th style={th}>Description</th>
-                      <th style={{ ...th, textAlign: 'right', width: 160 }}>Amount ex GST (A$)</th>
+                    <tr style={{ borderBottom: `2px solid ${accent}` }}>
+                      <th style={{ padding: '10px 0', textAlign: 'left', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#aaa' }}>Description</th>
+                      <th style={{ padding: '10px 0', textAlign: 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#aaa', width: 140 }}>Amount (AUD)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {lineItems.map((item, i) => (
-                      <tr key={i}>
-                        <td style={td()}>{item.description || '—'}</td>
-                        <td style={td(true)}>{fmt(item.amount)}</td>
+                      <tr key={i} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                        <td style={{ padding: '14px 0', verticalAlign: 'top', color: '#222', lineHeight: 1.5 }}>{item.description || '—'}</td>
+                        <td style={{ padding: '14px 0', textAlign: 'right', fontWeight: 600, color: '#111' }}>${fmt(item.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
 
-              {/* Totals */}
-              <div style={{ marginBottom: 28 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', color: '#6b7280' }}><strong>Subtotal (ex GST)</strong></td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', width: 160 }}>${fmt(subtotal)}</td>
-                    </tr>
-                    {chargeGst && (
-                      <tr>
-                        <td style={{ padding: '4px 12px', textAlign: 'right', color: '#6b7280' }}>GST 10%</td>
-                        <td style={{ padding: '4px 12px', textAlign: 'right' }}>${fmt(gst)}</td>
-                      </tr>
-                    )}
-                    <tr>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}><strong>Total</strong></td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, fontSize: 15, color: accent }}>${fmt(total)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Payment details */}
-              {(settings.bank_bsb || settings.paypal_link || settings.stripe_link) && (
-                <div style={{
-                  background: '#f0fdf4', border: '1px solid #bbf7d0',
-                  borderRadius: 8, padding: '14px 16px', marginBottom: 24,
-                }}>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8, fontWeight: 600 }}>Payment Details</div>
-                  <div style={{ fontSize: 12, lineHeight: 1.8, color: '#374151' }}>
-                    {settings.bank_name && <div><strong>Bank:</strong> {settings.bank_name}</div>}
-                    {settings.bank_bsb && <div><strong>BSB:</strong> {settings.bank_bsb} &nbsp;·&nbsp; <strong>Account:</strong> {settings.bank_account}</div>}
-                    {settings.paypal_link && <div><strong>PayPal / PayID:</strong> {settings.paypal_link}</div>}
-                    {settings.stripe_link && <div><strong>Stripe:</strong> {settings.stripe_link}</div>}
-                  </div>
-                  {settings.payment_terms && (
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8, paddingTop: 8, borderTop: '1px solid #d1fae5' }}>
-                      {settings.payment_terms}
+                {/* ── Totals ── */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 32 }}>
+                  <div style={{ width: 260, borderTop: '1px solid #eee', paddingTop: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888', marginBottom: 8 }}>
+                      <span>Subtotal (ex GST)</span>
+                      <span style={{ color: '#333', fontWeight: 500 }}>${fmt(subtotal)}</span>
                     </div>
-                  )}
+                    {chargeGst && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888', marginBottom: 10 }}>
+                        <span>GST (10%)</span>
+                        <span style={{ color: '#333', fontWeight: 500 }}>${fmt(gst)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: '#06090A', borderRadius: 8, marginTop: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Total Due</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: accent }}>${fmt(total)}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {/* Notes */}
-              {invoice.notes && (
-                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6, marginBottom: 20 }}>
-                  {invoice.notes}
+                {/* ── Payment details ── */}
+                {(settings.bank_bsb || settings.bank_account || settings.paypal_link || settings.stripe_link) && (
+                  <div style={{ background: '#f9fafb', border: '1px solid #e8e8e8', borderRadius: 10, padding: '18px 22px', marginBottom: 24 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#aaa', marginBottom: 12 }}>Payment Details</div>
+                    <div style={{ fontSize: 13, lineHeight: 2, color: '#444' }}>
+                      {(settings.bank_bsb || settings.bank_account) && (
+                        <div>
+                          <strong>Bank Transfer</strong>
+                          {settings.bank_name && <span> · {settings.bank_name}</span>}
+                          {settings.bank_bsb && <span> · BSB: <strong>{settings.bank_bsb}</strong></span>}
+                          {settings.bank_account && <span> · Account: <strong>{settings.bank_account}</strong></span>}
+                        </div>
+                      )}
+                      {settings.paypal_link && <div><strong>PayPal / PayID:</strong> {settings.paypal_link}</div>}
+                      {settings.stripe_link && <div><strong>Stripe:</strong> {settings.stripe_link}</div>}
+                    </div>
+                    {settings.payment_terms && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e8e8e8', fontSize: 12, color: '#888', lineHeight: 1.6 }}>
+                        {settings.payment_terms}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Notes ── */}
+                {invoice.notes && (
+                  <div style={{ fontSize: 12, color: '#888', lineHeight: 1.7, marginBottom: 24 }}>
+                    {invoice.notes}
+                  </div>
+                )}
+
+                {/* ── Footer ── */}
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16, textAlign: 'center', fontSize: 12, color: '#bbb' }}>
+                  {settings.invoice_footer || 'Please include the Invoice # as your payment reference.'}
                 </div>
-              )}
 
-              {/* Footer */}
-              <div style={{ fontSize: 12, color: '#9ca3af', borderTop: '1px solid #e5e7eb', paddingTop: 16, textAlign: 'center' }}>
-                {settings.invoice_footer || `Please include the Invoice # as your payment reference.`}
               </div>
-              </div>{/* end padding wrapper */}
             </div>
           </div>
         </div>
