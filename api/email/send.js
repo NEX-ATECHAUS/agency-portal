@@ -43,11 +43,11 @@ function layout({ body, companyName, footerNote }) {
   body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f3f4f6;color:#06090A;-webkit-text-size-adjust:100%}
   .wrap{max-width:600px;margin:0 auto;padding:28px 16px 48px}
   .nav{background:#06090A;border-radius:12px 12px 0 0;padding:16px 28px;display:flex;align-items:center;justify-content:space-between}
-  .nav-logo{height:28px;width:auto;object-fit:contain}
+  .nav-logo{height:28px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
   .nav-label{color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:0.1em;text-transform:uppercase}
   .card{background:#ffffff;border-radius:0 0 12px 12px;overflow:hidden}
   .hero{background:#06090A;padding:32px 32px 36px;position:relative;overflow:hidden}
-  .hero-glow{position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:#c9fcd2;border-radius:50%;opacity:0.07}
+  .hero-glow{position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:#c9fcd2;border-radius:50%;opacity:0.06;pointer-events:none}
   .hero-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#c9fcd2;margin-bottom:12px}
   .hero h1{font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;margin-bottom:8px;line-height:1.2}
   .hero p{font-size:13px;color:rgba(255,255,255,0.5);margin:0}
