@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 const { getOAuthClient } = require('../_sheets-auth');
 
 const LOGO = 'https://static.wixstatic.com/media/f71431_61430c2cad9d4aa3b3c60140cf727352~mv2.png';
+const LOGO_WHITE = 'https://static.wixstatic.com/media/f71431_c53934a5d5d8436086e818a0a58d64bc~mv2.png';
 
 function fmtAmount(n) {
   return Number(parseFloat(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -46,8 +47,7 @@ function layout({ body, companyName, footerNote }) {
   .nav-logo{height:28px;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
   .nav-label{color:rgba(255,255,255,0.4);font-size:11px;letter-spacing:0.1em;text-transform:uppercase}
   .card{background:#ffffff;border-radius:0 0 12px 12px;overflow:hidden}
-  .hero{background:#06090A;padding:32px 32px 36px;position:relative;overflow:hidden}
-  .hero-glow{position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:#c9fcd2;border-radius:50%;opacity:0.06;pointer-events:none}
+  .hero{background:#06090A;padding:32px 32px 36px}
   .hero-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#c9fcd2;margin-bottom:12px}
   .hero h1{font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;margin-bottom:8px;line-height:1.2}
   .hero p{font-size:13px;color:rgba(255,255,255,0.5);margin:0}
@@ -75,7 +75,7 @@ function layout({ body, companyName, footerNote }) {
 <body>
 <div class="wrap">
   <div class="nav">
-    <img src="${LOGO}" alt="${companyName}" class="nav-logo" style="height:28px;width:auto;object-fit:contain;filter:brightness(0) invert(1);margin-right:10px">
+    <img src="${LOGO_WHITE}" alt="${companyName}" style="height:28px;width:auto;object-fit:contain;margin-right:10px">
     <span class="nav-label">${companyName}</span>
   </div>
   <div class="card">
@@ -97,7 +97,6 @@ function proposalHtml({ proposal, proposalUrl, companyName }) {
 
   const body = `
     <div class="hero">
-      <div class="hero-glow"></div>
       <div class="hero-tag">Project Proposal</div>
       <h1>${proposal.title}</h1>
       <p>Prepared for <strong style="color:rgba(255,255,255,0.8)">${proposal.client_name || 'you'}</strong></p>
@@ -149,7 +148,6 @@ function invoiceHtml({ invoice, project, companyName, settings, isReminder }) {
 
   const body = `
     <div class="hero">
-      <div class="hero-glow"></div>
       <div class="hero-tag">${isReminder ? '⏰ Payment Reminder' : 'Tax Invoice'}</div>
       <h1>${invoice.invoice_number}</h1>
       <p>Billed to <strong style="color:rgba(255,255,255,0.8)">${invoice.client_name || 'you'}</strong>${invoice.stage ? ` · ${invoice.stage}` : ''}</p>
