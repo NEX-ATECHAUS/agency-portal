@@ -197,6 +197,15 @@ export default function Invoices() {
   }
 
   async function handleSend(invoice, isReminder = false) {
+    // Resolve email — try invoice field first, then look up from clients list
+    const resolvedEmail = invoice.client_email ||
+      clients.find(c => c.id === invoice.client_id)?.email || '';
+
+    if (!resolvedEmail || !resolvedEmail.includes('@')) {
+      toast.error('No valid email address for this client. Edit the invoice to add one.');
+      return;
+    }
+
     setSendingId(isReminder ? `r-${invoice.id}` : invoice.id);
     try {
       const project = projects.find(p => p.id === invoice.project_id);
@@ -204,19 +213,33 @@ export default function Invoices() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'invoice', to: invoice.client_email,
-          invoice: { ...invoice, is_reminder: isReminder },
-          project, companyName: settings.company_name, settings,
+          type: 'invoice',
+          to: resolvedEmail,
+          invoice: { ...invoice, client_email: resolvedEmail, is_reminder: isReminder },
+          project,
+          companyName: settings.company_name,
+          settings,
         }),
       });
-      if (!res.ok) throw new Error('Email failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Email failed');
+      }
       if (!isReminder) {
-        const updated = await InvoicesAPI.update(invoice.id, { status: 'sent', sent_at: new Date().toISOString() });
+        const updated = await InvoicesAPI.update(invoice.id, {
+          ...invoice,
+          client_email: resolvedEmail,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+        });
         setInvoices(prev => prev.map(i => i.id === updated.id ? updated : i));
       }
       toast.success(isReminder ? 'Reminder sent!' : 'Invoice sent!');
-    } catch (err) { toast.error(err.message || 'Failed to send'); }
-    finally { setSendingId(null); }
+    } catch (err) {
+      toast.error(err.message || 'Failed to send');
+    } finally {
+      setSendingId(null);
+    }
   }
 
   async function handleMarkPaid(invoice) {
