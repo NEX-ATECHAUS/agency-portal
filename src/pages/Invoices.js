@@ -594,7 +594,7 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
               <div style={{ background: BRAND.black, padding: '14px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <img src={LOGO} alt="NEX-A"
-                    style={{ height: 32, width: 'auto', objectFit: 'contain' }}
+                    style={{ height: 32, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
                     onError={e => { e.target.style.display = 'none'; }} />
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     {companyName}
@@ -775,7 +775,7 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                       {settings.invoice_footer || 'Please include the Invoice # as your payment reference.'}
                     <div style={{ marginTop: 12, fontSize: 11, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{COMMERCIAL_TERMS_SHORT}</div>
                     </div>
-                    <img src={LOGO} alt={companyName} style={{ height: 18, opacity: 0.2 }}
+                    <img src={LOGO} alt={companyName} style={{ height: 18, opacity: 0.3, filter: 'brightness(0) invert(1)' }}
                       onError={e => { e.target.style.display = 'none'; }} />
                   </div>
                 </div>
