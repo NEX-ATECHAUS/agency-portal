@@ -85,7 +85,7 @@
 
 [data-theme="light"] .btn-primary {
   background: #06090A;
-  color: #c9fcd2;
+  color: #6effa0;
   box-shadow: 0 2px 8px rgba(6,9,10,0.2);
 }
 [data-theme="light"] .btn-primary:hover:not(:disabled) {
