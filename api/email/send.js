@@ -60,7 +60,7 @@ function layout({ body, companyName, footerNote }) {
   .meta-label{display:table-cell;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;padding:4px 16px 4px 0;white-space:nowrap}
   .meta-value{display:table-cell;font-size:13px;color:#111;font-weight:500;padding:4px 0}
   .btn-wrap{text-align:center;margin:24px 0}
-  .btn{display:inline-block;background:#06090A;color:#c9fcd2;text-decoration:none;padding:14px 36px;border-radius:999px;font-size:14px;font-weight:600;letter-spacing:0.02em}
+  .btn{display:inline-block;background:#6effa0;color:#06090A;text-decoration:none;padding:14px 36px;border-radius:999px;font-size:14px;font-weight:700;letter-spacing:0.02em}
   .url-fallback{font-size:11px;color:#9ca3af;text-align:center;margin-top:8px;word-break:break-all}
   .url-fallback a{color:#6b7280}
   .payment-box{margin:20px 0;padding:16px 18px;background:#e8ffef;border:1px solid #98efb7;border-radius:8px}
@@ -69,13 +69,13 @@ function layout({ body, companyName, footerNote }) {
   .divider{height:1px;background:#f0f0f0;margin:20px 0}
   .terms{font-size:11px;color:#9ca3af;line-height:1.7;white-space:pre-line;margin-top:16px}
   .footer{padding:20px 32px;text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #f0f0f0}
-  .footer img{height:16px;opacity:0.25;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto}
+  .footer img{height:16px;opacity:0.4;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;filter:brightness(0) invert(1)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="nav">
-    <img src="${LOGO}" alt="${companyName}" class="nav-logo">
+    <img src="${LOGO}" alt="${companyName}" class="nav-logo" style="height:28px;width:auto;object-fit:contain;filter:brightness(0) invert(1);margin-right:10px">
     <span class="nav-label">${companyName}</span>
   </div>
   <div class="card">
