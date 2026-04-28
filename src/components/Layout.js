@@ -5,7 +5,7 @@ import { NotificationsAPI, SettingsAPI } from '../services/sheets';
 import {
   LayoutDashboard, FolderOpen, FileText, Receipt,
   Clock, BookOpen, Users, Settings, LogOut,
-  ChevronLeft, ChevronRight, Menu
+  ChevronLeft, ChevronRight, Menu, Sun, Moon
 } from 'lucide-react';
 
 const NAV = [
@@ -25,7 +25,13 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [companyName, setCompanyName] = useState('Agency Portal');
+  const [companyName, setCompanyName] = useState('NEX-A PORTAL');
+  const [theme, setTheme] = useState(() => localStorage.getItem('nex_theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('nex_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     loadNotificationCount();
@@ -80,7 +86,7 @@ export default function Layout() {
           fontFamily: 'var(--font-display)',
           fontWeight: 800, fontSize: 16, color: 'white',
         }}>
-          {companyName[0] || 'A'}
+          {companyName[0] || 'N'}
         </div>
         {!collapsed && (
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -161,6 +167,21 @@ export default function Layout() {
         >
           <LogOut size={18} style={{ flexShrink: 0 }} />
           {!collapsed && 'Sign out'}
+        </button>
+        <button
+          onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: collapsed ? '10px 16px' : '10px 20px',
+            width: '100%', background: 'none', border: 'none',
+            color: 'var(--text-secondary)', cursor: 'pointer',
+            fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap',
+          }}
+        >
+          {theme === 'dark'
+            ? <Sun size={18} style={{ flexShrink: 0 }} />
+            : <Moon size={18} style={{ flexShrink: 0 }} />}
+          {!collapsed && (theme === 'dark' ? 'Light mode' : 'Dark mode')}
         </button>
         <button
           onClick={() => setCollapsed(c => !c)}
