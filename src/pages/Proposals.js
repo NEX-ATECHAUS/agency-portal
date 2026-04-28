@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ProposalsAPI, ClientsAPI, SettingsAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, Search, Send, ExternalLink, X, Copy, Eye } from 'lucide-react';
+import { Plus, Search, Send, ExternalLink, X, Copy } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 function fmtDate(raw) {
