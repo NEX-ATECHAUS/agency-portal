@@ -65,7 +65,7 @@ export default function ProposalView() {
         : parseFloat(proposal.total_amount) * 0.5;
 
       await InvoicesAPI.create({
-        invoice_number: `INV-${Date.now()}`,
+        invoice_number: `INV-${String(Math.floor(Math.random() * 9000) + 1000)}`,
         project_id: project.id,
         project_title: project.title,
         client_id: proposal.client_id,
