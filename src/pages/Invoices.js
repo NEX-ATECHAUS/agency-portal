@@ -649,10 +649,6 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                       <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Due Date</div>
                       <div style={{ fontSize: 16, fontWeight: 600, color: invoice.status === 'overdue' ? '#f87171' : 'rgba(255,255,255,0.75)' }}>{dueDate}</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Status</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: invoice.status === 'paid' ? BRAND.green : 'rgba(255,255,255,0.75)', textTransform: 'capitalize' }}>{invoice.status || 'Draft'}</div>
-                    </div>
                   </div>
                 </div>
 
