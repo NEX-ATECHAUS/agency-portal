@@ -4,6 +4,16 @@ import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, Send, CheckSquare, X, Eye, Bell, Trash2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
+function fmtDate(raw) {
+  if (!raw) return '—';
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
+    if (isNaN(d)) return raw;
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return raw; }
+}
+
+
 const STATUS_COLORS = {
   draft: 'badge-gray', sent: 'badge-blue', paid: 'badge-green', overdue: 'badge-red',
 };
@@ -211,10 +221,17 @@ export default function Invoices() {
 
   async function handleMarkPaid(invoice) {
     try {
-      const updated = await InvoicesAPI.update(invoice.id, { status: 'paid', paid_at: new Date().toISOString() });
-      setInvoices(prev => prev.map(i => i.id === updated.id ? updated : i));
-      toast.success('Marked as paid');
-    } catch { toast.error('Failed to update'); }
+      const now = new Date().toISOString();
+      const updated = await InvoicesAPI.update(invoice.id, {
+        ...invoice,
+        status: 'paid',
+        paid_at: now,
+      });
+      setInvoices(prev => prev.map(i => i.id === updated.id ? { ...updated, status: 'paid', paid_at: now } : i));
+      toast.success('Marked as paid ✓');
+    } catch (err) {
+      toast.error('Failed to update: ' + err.message);
+    }
   }
 
   const filtered = invoices.filter(i => {
@@ -281,8 +298,7 @@ export default function Invoices() {
                 <th>Total</th>
                 <th>Created</th>
                 <th>Due</th>
-                <th>Status</th>
-                <th style={{ minWidth: 200 }}>Actions</th>
+                <th style={{ minWidth: 220 }}>Status / Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -302,25 +318,33 @@ export default function Invoices() {
                   <td style={{ fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontSize: 14 }}>
                     ${fmt(inv.amount)}
                   </td>
-                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{inv.created_at ? inv.created_at.split('T')[0] : '—'}</td>
-                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{inv.due_date || '—'}</td>
-                  <td><span className={`badge ${STATUS_COLORS[inv.status] || 'badge-gray'}`}>{inv.status || 'draft'}</span></td>
+                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{inv.created_at ? fmtDate(inv.created_at) : '—'}</td>
+                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtDate(inv.due_date)}</td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span className={`badge ${STATUS_COLORS[inv.status] || 'badge-gray'}`}>{inv.status || 'draft'}</span>
+                      {inv.sent_at && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Sent {fmtDate(inv.sent_at)}</span>}
+                      {inv.paid_at && <span style={{ fontSize: 10, color: 'var(--success)' }}>Paid {fmtDate(inv.paid_at)}</span>}
+                    </div>
+                  </td>
                   <td onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                       <button className="btn btn-ghost btn-sm btn-icon" title="Preview" onClick={() => setPreview(inv)}><Eye size={13} /></button>
                       <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEdit(inv)}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
-                      {inv.status === 'draft' && (
-                        <button className="btn btn-primary btn-sm" disabled={sendingId === inv.id} onClick={() => handleSend(inv)}>
-                          <Send size={12} /> {sendingId === inv.id ? '...' : 'Send'}
-                        </button>
-                      )}
-                      {(inv.status === 'sent' || inv.status === 'overdue') && (
+                      {inv.status !== 'paid' && (
                         <>
-                          <button className="btn btn-secondary btn-sm" disabled={sendingId === `r-${inv.id}`} onClick={() => handleSend(inv, true)}>
-                            <Bell size={12} /> {sendingId === `r-${inv.id}` ? '...' : 'Remind'}
-                          </button>
+                          {(inv.status === 'draft' || !inv.status) && (
+                            <button className="btn btn-primary btn-sm" disabled={sendingId === inv.id} onClick={() => handleSend(inv)}>
+                              <Send size={12} /> {sendingId === inv.id ? '...' : 'Send'}
+                            </button>
+                          )}
+                          {(inv.status === 'sent' || inv.status === 'overdue') && (
+                            <button className="btn btn-secondary btn-sm" disabled={sendingId === `r-${inv.id}`} onClick={() => handleSend(inv, true)}>
+                              <Bell size={12} /> {sendingId === `r-${inv.id}` ? '...' : 'Remind'}
+                            </button>
+                          )}
                           <button className="btn btn-success btn-sm" onClick={() => handleMarkPaid(inv)}>
                             <CheckSquare size={12} /> Paid
                           </button>
@@ -502,7 +526,7 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
   const gst       = chargeGst ? subtotal * 0.1 : 0;
   const total     = subtotal + gst;
 
-  const issueDate    = invoice.created_at ? invoice.created_at.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
+  const issueDate    = fmtDate(invoice.created_at || new Date().toISOString());
   const companyName  = settings.company_name  || 'NEX-A';
   const accent       = settings.accent_color  || '#6c63ff';
 
@@ -562,7 +586,7 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.9 }}>
                     <span style={{ color: 'rgba(255,255,255,0.75)' }}>#{invoice.invoice_number}</span><br />
                     <span>Issued {issueDate}</span><br />
-                    <span style={{ color: invoice.status === 'overdue' ? '#f87171' : 'rgba(255,255,255,0.75)' }}>Due {invoice.due_date}</span>
+                    <span style={{ color: invoice.status === 'overdue' ? '#f87171' : 'rgba(255,255,255,0.75)' }}>Due {fmtDate(invoice.due_date)}</span>
                   </div>
                 </div>
               </div>
