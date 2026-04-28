@@ -44,6 +44,11 @@ function parseStages(raw) {
   return null;
 }
 
+const COMMERCIAL_TERMS_SHORT = `Late Accounts: Interest 1.5%/month. Work may pause after 7 days overdue.
+GST: Prices exclude GST unless stated. Expenses: Pre-approved, invoiced as incurred.
+Change Requests: Variations quoted/approved before continuing. Warranty: 30 days on defects.
+IP & Access: IP transfers on final payment; credentials remain under Nex-a control until all invoices are paid.`;
+
 const STATUS_COLORS = {
   draft: 'badge-gray', sent: 'badge-blue', paid: 'badge-green', overdue: 'badge-red',
 };
@@ -768,6 +773,7 @@ function InvoicePreview({ invoice, settings, clients = [], onClose }) {
                   <div style={{ padding: '20px 44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 12, color: '#d1d5db' }}>
                       {settings.invoice_footer || 'Please include the Invoice # as your payment reference.'}
+                    <div style={{ marginTop: 12, fontSize: 11, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{COMMERCIAL_TERMS_SHORT}</div>
                     </div>
                     <img src={LOGO} alt={companyName} style={{ height: 18, opacity: 0.2 }}
                       onError={e => { e.target.style.display = 'none'; }} />
