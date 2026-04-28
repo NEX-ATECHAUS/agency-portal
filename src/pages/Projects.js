@@ -26,7 +26,7 @@ function parseCompletion(raw) {
 }
 
 function parseStages(raw) {
-  if (!raw) return DEFAULT_STAGES;
+  if (!raw || raw === '' || raw === '[]') return null; // null = no custom stages set
   if (Array.isArray(raw) && raw.length > 0) return raw;
   if (typeof raw === 'string') {
     try {
@@ -34,7 +34,7 @@ function parseStages(raw) {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {}
   }
-  return DEFAULT_STAGES;
+  return null;
 }
 
 function stageNames(stages) { return stages.map(s => s.name); }
@@ -123,7 +123,7 @@ export default function Projects() {
     if (completing) return;
     setCompleting(`${project.id}-${stage}`);
     try {
-      const stages   = parseStages(project.payment_stages);
+      const stages   = parseStages(project.payment_stages) || DEFAULT_STAGES;
       const stageObj = stages.find(s => s.name === stage);
       const stageCompletion = parseCompletion(project.stage_completion);
 
@@ -209,7 +209,7 @@ export default function Projects() {
           {filtered.length === 0 ? (
             <div className="empty-state"><p>No projects</p></div>
           ) : filtered.map(project => {
-            const stages = parseStages(project.payment_stages);
+            const stages = parseStages(project.payment_stages) || DEFAULT_STAGES;
             const completion = parseCompletion(project.stage_completion);
             const done = stageNames(stages).filter(s => completion[s]).length;
             const pct  = stages.length ? Math.round((done / stages.length) * 100) : 0;
@@ -390,7 +390,7 @@ export default function Projects() {
 }
 
 function ProjectDetail({ project, onStageComplete, completing }) {
-  const stages = parseStages(project.payment_stages);
+  const stages = parseStages(project.payment_stages) || DEFAULT_STAGES;
   const stageCompletion = parseCompletion(project.stage_completion);
   const currentStageIdx = stageNames(stages).indexOf(project.current_stage);
   const fee = parseFloat(project.total_fee) || 0;
