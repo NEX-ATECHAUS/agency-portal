@@ -1,9 +1,9 @@
 /* ── Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Stack+Sans+Notch:wght@200..700&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
 
 /* ── Dark mode (default) — from NEX-A VoiceOver UI ── */
 :root {
-  --font-display: 'Instrument Sans', system-ui, sans-serif;
+  --font-display: 'Stack Sans Notch', 'Instrument Sans', system-ui, sans-serif;
   --font-body:    'Instrument Sans', system-ui, sans-serif;
 
   /* Backgrounds */
