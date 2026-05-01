@@ -29,8 +29,9 @@ export default function Books() {
   useEffect(() => {
     if (!showScanMenu) return;
     const close = () => setShowScanMenu(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
+    // setTimeout prevents the opening click from immediately closing the menu
+    const t = setTimeout(() => document.addEventListener('click', close), 0);
+    return () => { clearTimeout(t); document.removeEventListener('click', close); };
   }, [showScanMenu]);
 
   async function loadData() {
