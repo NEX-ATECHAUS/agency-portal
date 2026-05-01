@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TimeAPI, ProjectsAPI, ClientsAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, Search, Trash2, X, Clock, TrendingUp, Calendar, RefreshCw, CheckSquare, Square, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Trash2, X, Clock, TrendingUp, Calendar, RefreshCw, CheckSquare, Square } from 'lucide-react';
 import { format, startOfWeek, isAfter, subDays } from 'date-fns';
 
 function fmtDate(raw) {
