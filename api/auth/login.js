@@ -1,14 +1,5 @@
 // api/auth/login.js
 // Vercel serverless function for admin authentication
-const { google } = require('googleapis');
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-  return google.sheets({ version: 'v4', auth });
-}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
