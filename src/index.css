@@ -320,20 +320,34 @@ tbody tr:hover td { background: rgba(110,255,160,0.03); color: var(--text-primar
 .modal-header h2,
 .modal-header h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .modal-body {
-  padding: 28px;
+  padding: 28px 32px;
   display: flex; flex-direction: column;
   gap: 20px;
 }
 .modal > form .modal-footer,
 .modal-footer {
-  padding: 18px 28px;
+  padding: 18px 32px;
   border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 10px;
 }
 
-/* Auto-pad form content directly in modal */
+/* Ensure forms directly inside modal get proper padding */
 .modal > form { display: flex; flex-direction: column; }
-.modal > form > .modal-body { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+.modal > form > .modal-body { padding: 28px 32px; display: flex; flex-direction: column; gap: 20px; }
+
+/* Modal header padding to match */
+.modal-header {
+  padding: 20px 32px !important;
+}
+
+/* Any content directly in modal that isn't already classed */
+.modal input,
+.modal textarea,
+.modal select,
+.modal .form-group,
+.modal .form-row {
+  max-width: 100%;
+}
 
 /* ── Toast ── */
 .toast-container {
