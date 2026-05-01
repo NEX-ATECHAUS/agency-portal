@@ -13,7 +13,9 @@ export default function Books() {
   const [expenses, setExpenses] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning]     = useState(false);
+  const [showScanMenu, setShowScanMenu] = useState(false);
+  const [lastScanned, setLastScanned]   = useState(() => localStorage.getItem('inbox_last_scanned') || null);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('overview');
   const [showModal, setShowModal] = useState(false);
@@ -23,6 +25,13 @@ export default function Books() {
   });
 
   useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!showScanMenu) return;
+    const close = () => setShowScanMenu(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showScanMenu]);
 
   async function loadData() {
     setLoading(true);
@@ -34,22 +43,53 @@ export default function Books() {
     finally { setLoading(false); }
   }
 
-  async function scanInbox() {
+  async function scanInbox(fromDate) {
     setScanning(true);
+    setShowScanMenu(false);
     try {
-      const res = await fetch('/api/inbox/scan', { method: 'POST' });
+      const res = await fetch('/api/inbox/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: fromDate }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Scan failed');
+      const now = new Date().toISOString();
+      localStorage.setItem('inbox_last_scanned', now);
+      setLastScanned(now);
       if (data.added > 0) {
         toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} from inbox`);
-        await loadData(); // refresh
+        await loadData();
       } else {
-        toast.success('Inbox scanned — no new invoices found');
+        toast.success(`Scanned — no new invoices found (${data.threads_found || 0} emails checked)`);
       }
     } catch (err) {
       toast.error('Scan failed: ' + err.message);
     }
     setScanning(false);
+  }
+
+  function getScanOptions() {
+    const opts = [];
+    if (lastScanned) {
+      const d = new Date(lastScanned);
+      opts.push({
+        label: `Since last scan (${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })})`,
+        value: lastScanned,
+        highlight: true,
+      });
+    }
+    const now = new Date();
+    const ago = (days) => new Date(now - days * 86400000).toISOString();
+    opts.push(
+      { label: 'Last 30 days',   value: ago(30) },
+      { label: 'Last 3 months',  value: ago(90) },
+      { label: 'Last 6 months',  value: ago(180) },
+      { label: 'Last 12 months', value: ago(365) },
+      { label: 'Last 2 years',   value: ago(730) },
+      { label: 'All time',       value: ago(3650) },
+    );
+    return opts;
   }
 
   async function handleCreate(ev) {
@@ -92,12 +132,43 @@ export default function Books() {
           <h1 className="page-title">Books</h1>
           <p className="page-subtitle">Financial overview & expense tracking</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary" onClick={scanInbox} disabled={scanning}>
-            {scanning
-              ? <><RefreshCw size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Scanning...</>
-              : <><Mail size={14} /> Scan Inbox</>}
-          </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <button className="btn btn-secondary" onClick={() => !scanning && setShowScanMenu(s => !s)} disabled={scanning}
+              style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              {scanning
+                ? <><RefreshCw size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Scanning...</>
+                : <><Mail size={14} /> Scan Inbox <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span></>}
+            </button>
+            {showScanMenu && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+                background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)',
+                borderRadius: 10, boxShadow: 'var(--shadow)', minWidth: 240, overflow: 'hidden',
+              }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding: '10px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                  Scan from...
+                </div>
+                {getScanOptions().map(opt => (
+                  <button key={opt.value} onClick={() => scanInbox(opt.value)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      padding: '9px 14px', background: opt.highlight ? 'var(--accent-dim)' : 'none',
+                      border: 'none', borderTop: opt.highlight ? '1px solid var(--border)' : 'none',
+                      color: opt.highlight ? 'var(--accent)' : 'var(--text-secondary)',
+                      fontSize: 13, fontWeight: opt.highlight ? 600 : 400, cursor: 'pointer',
+                    }}>
+                    {opt.highlight && '⟳ '}{opt.label}
+                  </button>
+                ))}
+                {lastScanned && (
+                  <div style={{ padding: '6px 14px 10px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+                    Last scanned: {new Date(lastScanned).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             <Plus size={16} /> Add Expense
           </button>
