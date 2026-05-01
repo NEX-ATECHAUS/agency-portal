@@ -40,7 +40,7 @@ async function getAlreadyProcessed(sheets) {
   try {
     const r = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      range: 'expenses',
+      range: 'expenses!A:Z',
     });
     const rows = r.data.values || [];
     // Collect all notes fields (col I index 8) to check for email IDs
@@ -56,20 +56,26 @@ module.exports = async (req, res) => {
     const gmail = google.gmail({ version: 'v1', auth });
     const sheets = getSheetsClient();
 
-    // Search for invoice/receipt emails in the last 90 days
+    // Determine scan start date from request body
+    const fromDate = req.body?.from ? new Date(req.body.from) : new Date(Date.now() - 90 * 86400000);
+    const afterStr = `${fromDate.getFullYear()}/${String(fromDate.getMonth()+1).padStart(2,'0')}/${String(fromDate.getDate()).padStart(2,'0')}`;
+
+    console.log(`Scanning inbox from ${afterStr}`);
+
     const searchRes = await gmail.users.threads.list({
       userId: 'me',
-      q: 'subject:(invoice OR receipt OR "tax invoice" OR "payment confirmation") to:hello@nex-a.com.au newer_than:90d -from:hello@nex-a.com.au -from:accounts@nchhair.com -subject:TEST -subject:"share request"',
-      maxResults: 50,
+      q: `(subject:invoice OR subject:receipt OR subject:"tax invoice" OR subject:"payment confirmation" OR subject:"your order" OR from:invoice OR from:receipt OR from:billing OR from:statements) after:${afterStr} -from:hello@nex-a.com.au -from:sean@nex-a.com.au -subject:TEST -subject:"share request" -subject:"failed deployment" -subject:"appointment" -subject:"canceled"`,
+      maxResults: 100,
     });
 
     const threads = searchRes.data.threads || [];
-    if (!threads.length) return res.status(200).json({ added: 0, message: 'No new invoices found' });
+    console.log(`Found ${threads.length} threads matching invoice search`);
+    if (!threads.length) return res.status(200).json({ added: 0, message: 'No invoice emails found in the last 12 months', threads_found: 0 });
 
     // Get existing expenses to avoid duplicates
     const existingRows = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      range: 'expenses',
+      range: 'expenses!A:Z',
     }).catch(() => ({ data: { values: [] } }));
 
     const existingNotes = (existingRows.data.values || []).slice(1).map(r => r[7] || '').join(' ');
@@ -140,8 +146,8 @@ module.exports = async (req, res) => {
 
         await sheets.spreadsheets.values.append({
           spreadsheetId: process.env.SPREADSHEET_ID,
-          range: 'expenses',
-          valueInputOption: 'USER_ENTERED',
+          range: 'expenses!A:Z',
+          valueInputOption: 'RAW',
           requestBody: { values: [row] },
         });
 
@@ -152,7 +158,7 @@ module.exports = async (req, res) => {
 
       } catch (threadErr) {
         console.error('Thread error:', threadErr.message);
-        skipped.push(thread.id);
+        skipped.push(`${thread.id}: ${threadErr.message}`);
       }
     }
 
@@ -164,7 +170,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Inbox scan error:', err.message);
-    return res.status(500).json({ error: err.message });
+    console.error('Inbox scan error:', err.message, err.stack);
+    return res.status(500).json({ error: err.message, details: err.errors || err.code || null });
   }
 };
