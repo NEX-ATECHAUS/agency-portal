@@ -59,10 +59,10 @@ export default function Books() {
       localStorage.setItem('inbox_last_scanned', now);
       setLastScanned(now);
       if (data.added > 0) {
-        toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} from inbox`);
+        toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} from ${data.threads_found} emails`);
         await loadData();
       } else {
-        toast.success(`Scanned — no new invoices found (${data.threads_found || 0} emails checked)`);
+        toast.success(`Scanned ${data.threads_found || 0} emails — no new expenses found`);
       }
     } catch (err) {
       toast.error('Scan failed: ' + err.message);
