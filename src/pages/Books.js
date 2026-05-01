@@ -4,6 +4,16 @@ import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, Trash2, X, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 
+function fmtDate(raw) {
+  if (!raw) return '—';
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
+    if (isNaN(d)) return raw;
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return raw; }
+}
+
+
 const EXPENSE_CATEGORIES = ['Software', 'Travel', 'Office', 'Marketing', 'Hardware', 'Contractor', 'Subscriptions', 'Food', 'Other'];
 
 export default function Books() {
@@ -207,6 +217,7 @@ export default function Books() {
               <button onClick={() => setShowModal(false)} className="btn btn-ghost btn-sm"><X size={16} /></button>
             </div>
             <form onSubmit={handleCreate}>
+              <div className="modal-body">
               <div className="form-group">
                 <label>Description *</label>
                 <input required value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="E.g. Adobe Creative Cloud" />
@@ -236,6 +247,7 @@ export default function Books() {
               <div className="form-group">
                 <label>Notes</label>
                 <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
