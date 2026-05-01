@@ -3,6 +3,16 @@ import { ClientsAPI, ProjectsAPI, InvoicesAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, X, Upload, Download, Mail, Phone, Building, Edit2, Trash2 } from 'lucide-react';
 
+function fmtDate(raw) {
+  if (!raw) return '—';
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
+    if (isNaN(d)) return raw;
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return raw; }
+}
+
+
 export default function Clients() {
   const toast = useToast();
   const [clients, setClients] = useState([]);
@@ -251,6 +261,7 @@ export default function Clients() {
               <button onClick={() => setShowModal(false)} className="btn btn-ghost btn-sm"><X size={16} /></button>
             </div>
             <form onSubmit={handleSave}>
+              <div className="modal-body">
               <div className="form-row">
                 <div className="form-group">
                   <label>Name *</label>
@@ -278,6 +289,7 @@ export default function Clients() {
               <div className="form-group">
                 <label>Notes</label>
                 <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
