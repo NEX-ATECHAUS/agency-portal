@@ -294,6 +294,7 @@ export default function Projects() {
             project={selected}
             onStageComplete={stage => handleStageComplete(selected, stage)}
             completing={completing}
+            onEdit={() => openEdit(selected)}
           />
         )}
       </div>
