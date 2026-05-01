@@ -2,6 +2,9 @@ const { google } = require('googleapis');
 const { getOAuthClient, getSheetsClient } = require('../_sheets-auth');
 const Anthropic = require('@anthropic-ai/sdk');
 
+// Single client instance
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 function extractBody(msg) {
   if (msg.plaintextBody) return msg.plaintextBody.trim();
   let text = '', html = '';
@@ -19,37 +22,56 @@ function extractBody(msg) {
 }
 
 async function classifyWithAI(subject, sender, date, body) {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 500,
-    messages: [{
-      role: 'user',
-      content: `You are reviewing an email for a tech agency called Nex-a Technology Solutions (hello@nex-a.com.au).
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('ANTHROPIC_API_KEY not set');
+    return { is_expense: false, reason: 'AI unavailable — API key not configured', confidence: 'low' };
+  }
 
-Determine if this email represents a business expense — something Nex-a has been charged for or needs to pay.
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 500,
+      messages: [{
+        role: 'user',
+        content: `You are reviewing an email for Nex-a Technology Solutions (hello@nex-a.com.au), a tech agency.
+
+Is this email a business expense — something Nex-a has been charged for or needs to pay?
 
 Subject: ${subject}
 From: ${sender}
 Date: ${date}
-Email content:
-${(body || subject).substring(0, 2000)}
+Content: ${(body || subject).substring(0, 2000)}
 
-Return ONLY valid JSON, no markdown:
-{
-  "is_expense": true or false,
-  "confidence": "high | medium | low",
-  "reason": "one clear sentence explaining your decision",
-  "description": "concise description of the purchase (if expense)",
-  "category": "Software | Subscriptions | Marketing | Hardware | Travel | Office | Contractor | Food | Other",
-  "amount": "numeric string e.g. 34.00, or null if not found",
-  "vendor": "vendor/company name",
-  "notes": "invoice or receipt number if present"
-}`
-    }]
-  });
-  const text = msg.content[0].text.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '');
-  return JSON.parse(text);
+Respond with ONLY a JSON object. No markdown fences, no explanation, just the JSON:
+{"is_expense":true,"confidence":"high","reason":"...","description":"...","category":"Software","amount":"34.00","vendor":"Anthropic","notes":"INV-123"}`
+      }]
+    });
+
+    const raw = msg.content[0].text.trim();
+    console.log(`  AI raw response: ${raw.substring(0, 120)}`);
+
+    // Strip any markdown fences
+    const clean = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    // Find the JSON object even if there's surrounding text
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON object found in response');
+
+    return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.error('AI classify error:', err.message);
+    // Don't silently fail — return a reviewable result so user can decide
+    return {
+      is_expense: null, // null = AI failed, show to user anyway
+      confidence: 'low',
+      reason: `AI error: ${err.message}`,
+      description: subject,
+      category: 'Other',
+      amount: null,
+      vendor: sender,
+      notes: '',
+    };
+  }
 }
 
 // POST /api/inbox/scan — scan and return AI results without writing
@@ -161,6 +183,7 @@ module.exports = async (req, res) => {
 
         const body = extractBody(msg);
         const ai = await classifyWithAI(subject, sender, date, body);
+        console.log(`  Result: is_expense=${ai.is_expense} confidence=${ai.confidence} | ${ai.reason?.substring(0,80)}`);
 
         results.push({
           msgId,
