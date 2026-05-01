@@ -62,7 +62,8 @@ export default function Books() {
         toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} from ${data.threads_found} emails`);
         await loadData();
       } else {
-        toast.success(`Scanned ${data.threads_found || 0} emails — no new expenses found`);
+        const notExp = data.not_expense > 0 ? `, ${data.not_expense} not expenses` : '';
+        toast.success(`Scanned ${data.threads_found || 0} emails — nothing new${notExp}`);
       }
     } catch (err) {
       toast.error('Scan failed: ' + err.message);
