@@ -3,14 +3,6 @@ import { ClientsAPI, ProjectsAPI, InvoicesAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, X, Upload, Download, Mail, Phone, Building, Edit2, Trash2 } from 'lucide-react';
 
-function fmtDate(raw) {
-  if (!raw) return '—';
-  try {
-    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
-    if (isNaN(d)) return raw;
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-  } catch { return raw; }
-}
 
 
 export default function Clients() {
