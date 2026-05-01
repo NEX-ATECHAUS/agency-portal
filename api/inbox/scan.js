@@ -100,19 +100,27 @@ module.exports = async (req, res) => {
   // ── SCAN: find emails and run AI, return results ──────
   try {
     const fromDate = req.body?.from ? new Date(req.body.from) : new Date(Date.now() - 90 * 86400000);
-    const daysAgo = Math.max(1, Math.ceil((Date.now() - fromDate.getTime()) / 86400000));
+    // Use after:YYYY/MM/DD — more reliable in Gmail API than newer_than:Xd
+    const y = fromDate.getFullYear();
+    const m = String(fromDate.getMonth() + 1).padStart(2, '0');
+    const d = String(fromDate.getDate()).padStart(2, '0');
+    const afterClause = `after:${y}/${m}/${d}`;
     const OWN = '-from:hello@nex-a.com.au -from:sean@nex-a.com.au -from:accounts@nchhair.com -from:autolab@nex-a.com.au';
+
+    console.log('Scanning with:', afterClause);
 
     const threadMap = new Map();
     for (const q of [
-      `subject:invoice ${OWN} -subject:TEST newer_than:${daysAgo}d`,
-      `subject:receipt ${OWN} newer_than:${daysAgo}d`,
-      `subject:statement ${OWN} newer_than:${daysAgo}d`,
+      `subject:invoice ${OWN} -subject:TEST ${afterClause}`,
+      `subject:receipt ${OWN} ${afterClause}`,
+      `subject:statement ${OWN} ${afterClause}`,
     ]) {
       try {
         const r = await gmail.users.threads.list({ userId: 'me', q, maxResults: 50 });
-        (r.data.threads || []).forEach(t => threadMap.set(t.id, t.snippet || ''));
-      } catch (e) { console.error('Query err:', e.message); }
+        const found = r.data.threads || [];
+        console.log(`  Query: ${q.split(' ')[0]} ${q.split(' ')[1]} → ${found.length} results`);
+        found.forEach(t => threadMap.set(t.id, t.snippet || ''));
+      } catch (e) { console.error('Query err:', q, e.message); }
     }
 
     if (!threadMap.size) return res.status(200).json({ results: [], threads_found: 0 });
