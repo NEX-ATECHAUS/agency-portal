@@ -167,7 +167,11 @@ export default function Projects() {
       const stageObj = stages.find(s => s.name === stage);
       const stageCompletion = parseCompletion(project.stage_completion);
 
-      if (stageCompletion[stage]) { toast.info('Stage already completed'); return; }
+      // Already completed check — also check normalised key
+      const norm = s => (s||'').replace(/\s*[—–-]+\s*/g,' ').replace(/\s+/g,' ').trim().toLowerCase();
+      const alreadyDone = stageCompletion[stage] ||
+        Object.keys(stageCompletion).some(k => norm(k) === norm(stage) && stageCompletion[k]);
+      if (alreadyDone) { toast.info('Stage already completed'); return; }
 
       const fee    = parseFloat(project.total_fee) || 0;
       const pct    = Number(stageObj?.pct || 0);
@@ -437,18 +441,28 @@ function ProjectDetail({ project, onStageComplete, completing, onEdit }) {
   // For imported projects, stage_completion may have old keys that don't match stage names.
   // Rebuild completion map based on current_stage position — everything before current_stage is complete.
   const names = stageNames(stages);
-  const currentIdx = names.indexOf(project.current_stage);
+
+  // Normalise current_stage match — handle em dashes, extra spaces, case differences
+  const normalise = s => (s || '').replace(/\s*[—–-]+\s*/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  const normCurrent = normalise(project.current_stage);
+  const currentIdx = names.findIndex(n => normalise(n) === normCurrent);
+
+  // If still no match, use the first stage that isn't in rawCompletion as current
+  const firstIncomplete = names.findIndex(n => !rawCompletion[n]);
+  const resolvedIdx = currentIdx >= 0 ? currentIdx : (firstIncomplete >= 0 ? firstIncomplete : 0);
+
   const stageCompletion = {};
   names.forEach((name, i) => {
-    // Use raw completion if keys match, otherwise infer from current_stage position
     if (rawCompletion[name] !== undefined) {
       stageCompletion[name] = rawCompletion[name];
     } else {
-      // If we have some raw completion data with different keys, infer from position
-      stageCompletion[name] = currentIdx > 0 && i < currentIdx;
+      stageCompletion[name] = i < resolvedIdx;
     }
   });
-  const currentStageIdx = currentIdx;
+  const currentStageIdx = resolvedIdx;
+
+  // Sync resolved current stage name back for button logic
+  const resolvedCurrentStage = names[resolvedIdx] || project.current_stage;
   const fee = parseFloat(project.total_fee) || 0;
 
   return (
@@ -510,7 +524,7 @@ function ProjectDetail({ project, onStageComplete, completing, onEdit }) {
             const stage = stageObj.name;
             const pct   = Number(stageObj.pct || 0);
             const isComplete  = !!stageCompletion[stage];
-            const isCurrent   = project.current_stage === stage;
+            const isCurrent   = resolvedCurrentStage === stage;
             const isPending   = !isComplete && !isCurrent;
             const isCompleting = completing === `${project.id}-${stage}`;
             const stageAmount = fee > 0 ? (fee * pct) / 100 : 0;
