@@ -13,6 +13,13 @@ export default function Books() {
   const [expenses, setExpenses] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState('overview');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({
+    description: '', category: 'Software', amount: '',
+    date: format(new Date(), 'yyyy-MM-dd'), receipt_url: '', project_id: '', notes: '',
+  });
   const [scanning, setScanning]         = useState(false);
   const [showScanMenu, setShowScanMenu]   = useState(false);
   const [scanResults, setScanResults]     = useState(null); // null = not scanned yet
@@ -26,6 +33,18 @@ export default function Books() {
     const t = setTimeout(() => document.addEventListener('click', close), 0);
     return () => { clearTimeout(t); document.removeEventListener('click', close); };
   }, [showScanMenu]);
+
+  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [e, i] = await Promise.all([ExpensesAPI.list(), InvoicesAPI.list()]);
+      setExpenses(e.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setInvoices(i);
+    } catch { toast.error('Failed to load data'); }
+    finally { setLoading(false); }
+  }
 
   async function scanInbox(fromDate) {
     setScanning(true);
