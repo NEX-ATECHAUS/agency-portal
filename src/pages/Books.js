@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExpensesAPI, InvoicesAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, Search, Trash2, X, TrendingUp, TrendingDown, DollarSign, Mail, RefreshCw } from 'lucide-react';
+import { Plus, Search, Trash2, X, TrendingUp, TrendingDown, DollarSign, Mail, RefreshCw, CheckSquare } from 'lucide-react';
 import { format } from 'date-fns';
 
 
@@ -13,40 +13,25 @@ export default function Books() {
   const [expenses, setExpenses] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning]     = useState(false);
-  const [showScanMenu, setShowScanMenu] = useState(false);
-  const [lastScanned, setLastScanned]   = useState(() => localStorage.getItem('inbox_last_scanned') || null);
-  const [search, setSearch] = useState('');
-  const [tab, setTab] = useState('overview');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({
-    description: '', category: 'Software', amount: '',
-    date: format(new Date(), 'yyyy-MM-dd'), receipt_url: '', project_id: '', notes: '',
-  });
-
-  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [scanning, setScanning]         = useState(false);
+  const [showScanMenu, setShowScanMenu]   = useState(false);
+  const [scanResults, setScanResults]     = useState(null); // null = not scanned yet
+  const [approved, setApproved]           = useState({});   // msgId → true/false
+  const [importing, setImporting]         = useState(false);
+  const [lastScanned, setLastScanned]     = useState(() => localStorage.getItem('inbox_last_scanned') || null);
 
   useEffect(() => {
     if (!showScanMenu) return;
     const close = () => setShowScanMenu(false);
-    // setTimeout prevents the opening click from immediately closing the menu
     const t = setTimeout(() => document.addEventListener('click', close), 0);
     return () => { clearTimeout(t); document.removeEventListener('click', close); };
   }, [showScanMenu]);
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const [e, i] = await Promise.all([ExpensesAPI.list(), InvoicesAPI.list()]);
-      setExpenses(e.sort((a, b) => new Date(b.date) - new Date(a.date)));
-      setInvoices(i);
-    } catch { toast.error('Failed to load data'); }
-    finally { setLoading(false); }
-  }
-
   async function scanInbox(fromDate) {
     setScanning(true);
     setShowScanMenu(false);
+    setScanResults(null);
+    setApproved({});
     try {
       const res = await fetch('/api/inbox/scan', {
         method: 'POST',
@@ -58,31 +43,50 @@ export default function Books() {
       const now = new Date().toISOString();
       localStorage.setItem('inbox_last_scanned', now);
       setLastScanned(now);
-      if (data.added > 0) {
-        toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} from ${data.threads_found} emails`);
-        await loadData();
-      } else {
-        const notExp = data.not_expense > 0 ? `, ${data.not_expense} not expenses` : '';
-        toast.success(`Scanned ${data.threads_found || 0} emails — nothing new${notExp}`);
-      }
+      setScanResults(data.results || []);
+      // Auto-approve expenses AI is confident about
+      const autoApprove = {};
+      (data.results || []).forEach(r => {
+        if (r.is_expense && r.confidence === 'high') autoApprove[r.msgId] = true;
+      });
+      setApproved(autoApprove);
+      if (!data.results?.length) toast.success(`Scanned ${data.threads_found || 0} emails — no new items found`);
     } catch (err) {
       toast.error('Scan failed: ' + err.message);
     }
     setScanning(false);
   }
 
+  async function confirmImport() {
+    const toImport = (scanResults || []).filter(r => approved[r.msgId]);
+    if (!toImport.length) { toast.error('Select at least one item to import'); return; }
+    setImporting(true);
+    try {
+      const res = await fetch('/api/inbox/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: toImport }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} to Books`);
+      setScanResults(null);
+      setApproved({});
+      await loadData();
+    } catch (err) {
+      toast.error('Import failed: ' + err.message);
+    }
+    setImporting(false);
+  }
+
   function getScanOptions() {
     const opts = [];
     if (lastScanned) {
       const d = new Date(lastScanned);
-      opts.push({
-        label: `Since last scan (${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })})`,
-        value: lastScanned,
-        highlight: true,
-      });
+      opts.push({ label: `Since last scan (${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })})`, value: lastScanned, highlight: true });
     }
     const now = new Date();
-    const ago = (days) => new Date(now - days * 86400000).toISOString();
+    const ago = days => new Date(now - days * 86400000).toISOString();
     opts.push(
       { label: 'Last 30 days',   value: ago(30) },
       { label: 'Last 3 months',  value: ago(90) },
@@ -94,7 +98,7 @@ export default function Books() {
     return opts;
   }
 
-  async function handleCreate(ev) {
+    async function handleCreate(ev) {
     ev.preventDefault();
     try {
       const expense = await ExpensesAPI.create(form);
@@ -143,31 +147,16 @@ export default function Books() {
                 : <><Mail size={14} /> Scan Inbox <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span></>}
             </button>
             {showScanMenu && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
-                background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)',
-                borderRadius: 10, boxShadow: 'var(--shadow)', minWidth: 240, overflow: 'hidden',
-              }} onClick={e => e.stopPropagation()}>
-                <div style={{ padding: '10px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-                  Scan from...
-                </div>
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: 'var(--shadow)', minWidth: 240, overflow: 'hidden' }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ padding: '10px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Scan from...</div>
                 {getScanOptions().map(opt => (
                   <button key={opt.value} onClick={() => scanInbox(opt.value)}
-                    style={{
-                      display: 'block', width: '100%', textAlign: 'left',
-                      padding: '9px 14px', background: opt.highlight ? 'var(--accent-dim)' : 'none',
-                      border: 'none', borderTop: opt.highlight ? '1px solid var(--border)' : 'none',
-                      color: opt.highlight ? 'var(--accent)' : 'var(--text-secondary)',
-                      fontSize: 13, fontWeight: opt.highlight ? 600 : 400, cursor: 'pointer',
-                    }}>
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: opt.highlight ? 'var(--accent-dim)' : 'none', border: 'none', borderTop: opt.highlight ? '1px solid var(--border)' : 'none', color: opt.highlight ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 13, fontWeight: opt.highlight ? 600 : 400, cursor: 'pointer' }}>
                     {opt.highlight && '⟳ '}{opt.label}
                   </button>
                 ))}
-                {lastScanned && (
-                  <div style={{ padding: '6px 14px 10px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
-                    Last scanned: {new Date(lastScanned).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                )}
+                {lastScanned && <div style={{ padding: '6px 14px 10px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>Last scanned: {new Date(lastScanned).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>}
               </div>
             )}
           </div>
@@ -176,6 +165,114 @@ export default function Books() {
           </button>
         </div>
       </div>
+
+      {/* ── Inbox scan results review panel ── */}
+      {scanResults !== null && (
+        <div className="card" style={{ padding: '24px 28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>Inbox Scan Results</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                {scanResults.length} emails reviewed by AI · {Object.values(approved).filter(Boolean).length} selected to import
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setScanResults(null); setApproved({}); }}>
+                <X size={13} /> Dismiss
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => {
+                const all = {};
+                scanResults.forEach(r => { all[r.msgId] = true; });
+                setApproved(all);
+              }}>Select All</button>
+              <button className="btn btn-primary btn-sm" onClick={confirmImport} disabled={importing || !Object.values(approved).some(Boolean)}>
+                <CheckSquare size={13} /> {importing ? 'Importing...' : `Import ${Object.values(approved).filter(Boolean).length} Selected`}
+              </button>
+            </div>
+          </div>
+
+          {scanResults.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>No new emails found</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {scanResults.map(r => {
+                const isApproved = !!approved[r.msgId];
+                const confidenceColor = r.confidence === 'high' ? 'var(--success)' : r.confidence === 'medium' ? 'var(--warning)' : 'var(--text-muted)';
+                return (
+                  <div key={r.msgId} style={{
+                    border: `1px solid ${isApproved ? 'var(--accent-border)' : 'var(--border)'}`,
+                    background: isApproved ? 'var(--accent-dim)' : 'var(--bg-elevated)',
+                    borderRadius: 10, padding: '14px 16px',
+                    opacity: r.is_expense ? 1 : 0.55,
+                    transition: 'all 0.15s',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      {/* Checkbox */}
+                      <button onClick={() => setApproved(a => ({ ...a, [r.msgId]: !a[r.msgId] }))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: isApproved ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0, paddingTop: 1 }}>
+                        {isApproved
+                          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>}
+                      </button>
+
+                      {/* Main info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {r.is_expense ? (r.description || r.subject) : r.subject}
+                          </span>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: r.is_expense ? 'var(--success-dim)' : 'var(--danger-dim)', color: r.is_expense ? 'var(--success)' : 'var(--danger)' }}>
+                            {r.is_expense ? '✓ Expense' : '✕ Not expense'}
+                          </span>
+                          <span style={{ fontSize: 10, color: confidenceColor, fontWeight: 600 }}>{r.confidence} confidence</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 5 }}>
+                          {r.reason}
+                        </div>
+                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-muted)' }}>
+                          <span>{r.date}</span>
+                          <span>{r.vendor}</span>
+                          {r.category && <span className="badge badge-gray" style={{ fontSize: 10 }}>{r.category}</span>}
+                        </div>
+                      </div>
+
+                      {/* Amount + editable fields when selected */}
+                      <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                        {r.amount
+                          ? <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>${r.amount}</span>
+                          : <span style={{ fontSize: 11, color: 'var(--danger)' }}>No amount</span>}
+                      </div>
+                    </div>
+
+                    {/* Editable fields when approved */}
+                    {isApproved && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>Description</label>
+                          <input value={r.description || ''} style={{ marginBottom: 0 }}
+                            onChange={e => setScanResults(prev => prev.map(x => x.msgId === r.msgId ? { ...x, description: e.target.value } : x))} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>Category</label>
+                          <select value={r.category || 'Other'} style={{ marginBottom: 0 }}
+                            onChange={e => setScanResults(prev => prev.map(x => x.msgId === r.msgId ? { ...x, category: e.target.value } : x))}>
+                            {['Software','Subscriptions','Marketing','Hardware','Travel','Office','Contractor','Food','Other'].map(c => <option key={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label>Amount (AUD)</label>
+                          <input type="number" step="0.01" value={r.amount || ''} style={{ marginBottom: 0 }}
+                            onChange={e => setScanResults(prev => prev.map(x => x.msgId === r.msgId ? { ...x, amount: e.target.value } : x))} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* P&L summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
