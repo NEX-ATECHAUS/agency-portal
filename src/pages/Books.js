@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExpensesAPI, InvoicesAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, Search, Trash2, X, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Plus, Search, Trash2, X, TrendingUp, TrendingDown, DollarSign, Mail, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 
@@ -13,6 +13,7 @@ export default function Books() {
   const [expenses, setExpenses] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('overview');
   const [showModal, setShowModal] = useState(false);
@@ -31,6 +32,24 @@ export default function Books() {
       setInvoices(i);
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
+  }
+
+  async function scanInbox() {
+    setScanning(true);
+    try {
+      const res = await fetch('/api/inbox/scan', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Scan failed');
+      if (data.added > 0) {
+        toast.success(`Added ${data.added} expense${data.added !== 1 ? 's' : ''} from inbox`);
+        await loadData(); // refresh
+      } else {
+        toast.success('Inbox scanned — no new invoices found');
+      }
+    } catch (err) {
+      toast.error('Scan failed: ' + err.message);
+    }
+    setScanning(false);
   }
 
   async function handleCreate(ev) {
@@ -73,9 +92,16 @@ export default function Books() {
           <h1 className="page-title">Books</h1>
           <p className="page-subtitle">Financial overview & expense tracking</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={16} /> Add Expense
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={scanInbox} disabled={scanning}>
+            {scanning
+              ? <><RefreshCw size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Scanning...</>
+              : <><Mail size={14} /> Scan Inbox</>}
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <Plus size={16} /> Add Expense
+          </button>
+        </div>
       </div>
 
       {/* P&L summary */}
