@@ -6,7 +6,10 @@ function generateId() {
   return 'EXP_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 }
 
-function extractBody(payload) {
+function extractBody(msg) {
+  // Try plaintextBody first (available when using get_thread with FULL_CONTENT)
+  if (msg.plaintextBody) return msg.plaintextBody.trim();
+  
   let text = '';
   let html = '';
   const walk = (part) => {
@@ -20,6 +23,7 @@ function extractBody(payload) {
     }
     if (part.parts) part.parts.forEach(walk);
   };
+  const payload = msg.payload || msg;
   walk(payload);
   return (text || html).trim();
 }
@@ -96,12 +100,18 @@ module.exports = async (req, res) => {
       return res.status(200).json({ added: 0, skipped: 0, threads_found: 0, not_expense: 0 });
     }
 
-    // Get existing to deduplicate
+    // Get existing to deduplicate — build a Set of processed email IDs
     const existingRows = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.SPREADSHEET_ID,
       range: 'expenses!A:Z',
     }).catch(() => ({ data: { values: [] } }));
-    const existingNotes = (existingRows.data.values || []).slice(1).map(r => r[7] || '').join(' ');
+    const processedIds = new Set();
+    (existingRows.data.values || []).slice(1).forEach(r => {
+      const notes = r[7] || '';
+      const match = notes.match(/email:([a-f0-9]+)/);
+      if (match) processedIds.add(match[1]);
+    });
+    console.log(`Already processed: ${processedIds.size} expense IDs`);
 
     const added = [];
     const skipped = [];
@@ -117,7 +127,8 @@ module.exports = async (req, res) => {
         const msg = messages[0];
         const msgId = msg.id;
 
-        if (existingNotes.includes(`email:${msgId}`)) {
+        if (processedIds.has(msgId)) {
+          console.log(`  Skipping duplicate: ${msgId}`);
           skipped.push(`dup:${msgId}`); continue;
         }
 
@@ -139,7 +150,7 @@ module.exports = async (req, res) => {
           skipped.push(`own/noise:${subject}`); continue;
         }
 
-        const body = extractBody(msg.payload);
+        const body = extractBody(msg);
         console.log(`Checking: "${subject}" from ${sender} (${body.length} chars body)`);
 
         const parsed = await classifyAndParse(subject, sender, date, body, threadSnippet);
