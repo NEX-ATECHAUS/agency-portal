@@ -4,6 +4,16 @@ import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, CheckCircle, Circle, ChevronRight, X, DollarSign, Calendar, Trash2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
+function fmtDate(raw) {
+  if (!raw) return '—';
+  try {
+    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
+    if (isNaN(d)) return raw;
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return raw; }
+}
+
+
 const DEFAULT_STAGES = [
   { name: 'Discovery',   pct: 15 },
   { name: 'Design',      pct: 20 },
@@ -50,6 +60,7 @@ export default function Projects() {
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showModal, setShowModal]     = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const [completing, setCompleting]   = useState(null);
 
   const emptyForm = () => ({
@@ -94,8 +105,26 @@ export default function Projects() {
     });
   }
 
-  // ── Create project ──────────────────────────────────────
-  async function handleCreate(e) {
+  // ── Create / Edit project ─────────────────────────────
+  function openEdit(project) {
+    const stages = parseStages(project.payment_stages) || DEFAULT_STAGES;
+    setForm({
+      title: project.title || '',
+      client_id: project.client_id || '',
+      client_name: project.client_name || '',
+      type: project.type || 'Web Development',
+      status: project.status || 'active',
+      total_fee: project.total_fee || '',
+      start_date: project.start_date || '',
+      end_date: project.end_date || '',
+      description: project.description || '',
+      payment_stages: stages.map(s => ({ name: s.name, pct: Number(s.pct || 0) })),
+    });
+    setEditingProject(project);
+    setShowModal(true);
+  }
+
+  async function handleSave(e) {
     e.preventDefault();
     const pct = totalPct(form.payment_stages);
     if (pct !== 100) { toast.error(`Stage percentages must add up to 100% (currently ${pct}%)`); return; }
@@ -103,19 +132,30 @@ export default function Projects() {
     if (stages.length === 0) { toast.error('Add at least one stage'); return; }
     try {
       const client = clients.find(c => c.id === form.client_id);
-      const project = await ProjectsAPI.create({
+      const payload = {
         ...form,
         client_name: client?.name || form.client_name,
-        current_stage: stages[0].name,
-        stage_completion: {},
         payment_stages: JSON.stringify(stages),
-      });
-      setProjects(prev => [...prev, project]);
-      setSelected(project);
+      };
+      if (editingProject) {
+        const updated = await ProjectsAPI.update(editingProject.id, payload);
+        setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
+        setSelected(updated);
+        toast.success('Project updated');
+      } else {
+        const project = await ProjectsAPI.create({
+          ...payload,
+          current_stage: stages[0].name,
+          stage_completion: {},
+        });
+        setProjects(prev => [...prev, project]);
+        setSelected(project);
+        toast.success('Project created');
+      }
       setShowModal(false);
+      setEditingProject(null);
       setForm(emptyForm());
-      toast.success('Project created');
-    } catch { toast.error('Failed to create project'); }
+    } catch { toast.error('Failed to save project'); }
   }
 
   // ── Complete stage → create invoice ────────────────────
@@ -189,7 +229,7 @@ export default function Projects() {
         <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700 }}>Projects</h2>
-            <button className="btn btn-primary btn-sm" onClick={() => { setForm(emptyForm()); setShowModal(true); }}>
+            <button className="btn btn-primary btn-sm" onClick={() => { setForm(emptyForm()); setEditingProject(null); setShowModal(true); }}>
               <Plus size={13} /> New
             </button>
           </div>
@@ -260,13 +300,13 @@ export default function Projects() {
 
       {/* ── Create modal ─────────────────────────── */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowModal(false); setEditingProject(null); setForm(emptyForm()); }}>
           <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>New Project</h3>
-              <button onClick={() => setShowModal(false)} className="btn btn-ghost btn-sm"><X size={16} /></button>
+              <h3>{editingProject ? 'Edit Project' : 'New Project'}</h3>
+              <button onClick={() => { setShowModal(false); setEditingProject(null); setForm(emptyForm()); }} className="btn btn-ghost btn-sm"><X size={16} /></button>
             </div>
-            <form onSubmit={handleCreate}>
+            <form onSubmit={handleSave}>
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
@@ -379,7 +419,7 @@ export default function Projects() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Project</button>
+                <button type="submit" className="btn btn-primary">{editingProject ? 'Save Changes' : 'Create Project'}</button>
               </div>
             </form>
           </div>
@@ -389,10 +429,25 @@ export default function Projects() {
   );
 }
 
-function ProjectDetail({ project, onStageComplete, completing }) {
+function ProjectDetail({ project, onStageComplete, completing, onEdit }) {
   const stages = parseStages(project.payment_stages) || DEFAULT_STAGES;
-  const stageCompletion = parseCompletion(project.stage_completion);
-  const currentStageIdx = stageNames(stages).indexOf(project.current_stage);
+  const rawCompletion = parseCompletion(project.stage_completion);
+  
+  // For imported projects, stage_completion may have old keys that don't match stage names.
+  // Rebuild completion map based on current_stage position — everything before current_stage is complete.
+  const names = stageNames(stages);
+  const currentIdx = names.indexOf(project.current_stage);
+  const stageCompletion = {};
+  names.forEach((name, i) => {
+    // Use raw completion if keys match, otherwise infer from current_stage position
+    if (rawCompletion[name] !== undefined) {
+      stageCompletion[name] = rawCompletion[name];
+    } else {
+      // If we have some raw completion data with different keys, infer from position
+      stageCompletion[name] = currentIdx > 0 && i < currentIdx;
+    }
+  });
+  const currentStageIdx = currentIdx;
   const fee = parseFloat(project.total_fee) || 0;
 
   return (
@@ -415,14 +470,22 @@ function ProjectDetail({ project, onStageComplete, completing }) {
             {project.end_date && <>
               <span style={{ color: 'var(--border)' }}>·</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Calendar size={12} />{project.end_date}
+                <Calendar size={12} />{fmtDate(project.end_date)}
               </span>
             </>}
           </div>
         </div>
-        <span className={`badge ${project.status === 'active' ? 'badge-green' : project.status === 'completed' ? 'badge-purple' : 'badge-gray'}`}>
-          {project.status}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className={`badge ${project.status === 'active' ? 'badge-green' : project.status === 'completed' ? 'badge-purple' : 'badge-gray'}`}>
+            {project.status}
+          </span>
+          {onEdit && (
+            <button className="btn btn-secondary btn-sm" onClick={onEdit}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit Project
+            </button>
+          )}
+        </div>
       </div>
 
       {project.description && (
