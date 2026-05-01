@@ -4,14 +4,6 @@ import { useToast } from '../contexts/ToastContext';
 import { Plus, Search, Trash2, X, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 
-function fmtDate(raw) {
-  if (!raw) return '—';
-  try {
-    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
-    if (isNaN(d)) return raw;
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-  } catch { return raw; }
-}
 
 
 const EXPENSE_CATEGORIES = ['Software', 'Travel', 'Office', 'Marketing', 'Hardware', 'Contractor', 'Subscriptions', 'Food', 'Other'];
