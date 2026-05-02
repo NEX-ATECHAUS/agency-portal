@@ -92,8 +92,42 @@ export default function TimeTracking() {
       const res = await fetch(`/api/calendar/events?from=${calFrom}&to=${calTo + 'T23:59:59'}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to fetch calendar');
-      setCalEvents(data.events || []);
-      if (!data.events?.length) toast.info('No timed events found in that range');
+      const events = data.events || [];
+      setCalEvents(events);
+      if (!events.length) {
+        toast.info('No timed events found in that range');
+      } else {
+        // Auto-match immediately after fetch
+        const autoMappings = {};
+        const autoSelected = {};
+        events.forEach(ev => {
+          const titleLower = (ev.title + ' ' + ev.description).toLowerCase();
+          const matched = projects.find(p => {
+            const clientName = (p.client_name || '').toLowerCase();
+            const projTitle  = (p.title || '').toLowerCase();
+            if (clientName.length > 3 && titleLower.includes(clientName)) return true;
+            if (projTitle.length > 3 && titleLower.includes(projTitle)) return true;
+            return false;
+          }) || projects.find(p => {
+            const client = clients.find(c => c.id === p.client_id);
+            if (!client?.email) return false;
+            const domain = client.email.split('@')[1]?.toLowerCase();
+            return domain && ev.attendees.some(a => a.toLowerCase().includes(domain));
+          });
+          if (matched) {
+            autoMappings[ev.id] = { project_id: matched.id, stage: 'Meeting', billable: 'true' };
+            autoSelected[ev.id] = true;
+          }
+        });
+        setMappings(autoMappings);
+        setSelected(autoSelected);
+        const matchCount = Object.keys(autoMappings).length;
+        if (matchCount > 0) {
+          toast.success(`Fetched ${events.length} events — auto-matched ${matchCount} to projects`);
+        } else {
+          toast.success(`Fetched ${events.length} events — assign projects below to import`);
+        }
+      }
     } catch (err) {
       setCalError(err.message);
     }
@@ -117,33 +151,41 @@ export default function TimeTracking() {
   // Auto-match events to projects by scanning title/attendees for client names
   function autoMatch() {
     const newMappings = { ...mappings };
+    const newSelected = { ...selected };
+    let matched = 0;
     calEvents.forEach(ev => {
       if (newMappings[ev.id]?.project_id) return; // already mapped
-      const titleLower = (ev.title + ' ' + ev.description).toLowerCase();
-      // Try to match against client names and project titles
+      const haystack = (ev.title + ' ' + ev.description + ' ' + ev.attendees.join(' ')).toLowerCase();
+
       const matchedProject = projects.find(p => {
-        const name = (p.client_name || '').toLowerCase();
-        const title = (p.title || '').toLowerCase();
-        return name.length > 3 && (titleLower.includes(name) || titleLower.includes(title));
+        // Match client name
+        const clientName = (p.client_name || '').toLowerCase();
+        if (clientName.length > 3 && haystack.includes(clientName)) return true;
+        // Match project title keywords
+        const projTitle = (p.title || '').toLowerCase();
+        if (projTitle.length > 4 && haystack.includes(projTitle)) return true;
+        return false;
       }) || projects.find(p => {
-        // Also try matching attendee emails against client emails
+        // Match attendee email domain against client email domain
         const client = clients.find(c => c.id === p.client_id);
         if (!client?.email) return false;
-        return ev.attendees.some(a => a.toLowerCase().includes(client.email.split('@')[0].toLowerCase()));
+        const domain = client.email.split('@')[1]?.toLowerCase();
+        const emailUser = client.email.split('@')[0]?.toLowerCase();
+        return domain && (
+          ev.attendees.some(a => a.toLowerCase().includes(domain)) ||
+          ev.attendees.some(a => a.toLowerCase().includes(emailUser))
+        );
       });
+
       if (matchedProject) {
-        newMappings[ev.id] = {
-          ...(newMappings[ev.id] || {}),
-          project_id: matchedProject.id,
-          stage: 'Meeting',
-          billable: 'true',
-        };
-        // Auto-select matched events
-        setSelected(s => ({ ...s, [ev.id]: true }));
+        newMappings[ev.id] = { project_id: matchedProject.id, stage: 'Meeting', billable: 'true' };
+        newSelected[ev.id] = true;
+        matched++;
       }
     });
     setMappings(newMappings);
-    toast.success('Auto-matched events to projects');
+    setSelected(newSelected);
+    toast.success(matched > 0 ? `Matched ${matched} event${matched !== 1 ? 's' : ''} to projects` : 'No new matches found — assign manually below');
   }
 
   async function importSelected() {
