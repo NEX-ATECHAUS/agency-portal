@@ -215,8 +215,33 @@ module.exports = async (req, res) => {
         : `Invoice ${invoice.invoice_number} — $${amt} due ${due} — ${company}`;
       html = invoiceHtml({ invoice, project, companyName: company, settings, isReminder });
 
+    } else if (type === 'internal_notification') {
+      const isAccepted = req.body.status === 'accepted';
+      const accentColor = isAccepted ? '#6effa0' : '#f87171';
+      const icon = isAccepted ? '✓' : '✕';
+      subject = req.body.subject || `${icon} ${req.body.heading}`;
+      html = layout({
+        body: `
+          <div class="hero" style="background:#06090A;padding:28px 32px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:${accentColor};margin-bottom:12px">
+              ${icon} ${req.body.heading}
+            </div>
+            <p style="font-size:15px;color:#fff;margin-bottom:8px">${req.body.body || ''}</p>
+            ${req.body.detail ? `<p style="font-size:13px;color:rgba(255,255,255,0.55);margin:0">${req.body.detail}</p>` : ''}
+          </div>
+          <div class="body">
+            <div class="btn-wrap">
+              <a href="${req.body.cta_url || '#'}" class="btn" style="background:${accentColor};color:#06090A">
+                ${req.body.cta_label || 'View'} →
+              </a>
+            </div>
+          </div>`,
+        companyName: company,
+        footerNote: 'This is an automated notification from your NEX-A Portal',
+      });
+
     } else {
-      return res.status(400).json({ error: 'Invalid type. Use "proposal" or "invoice"' });
+      return res.status(400).json({ error: 'Invalid type. Use "proposal", "invoice", or "internal_notification"' });
     }
 
     const result = await gmail.users.messages.send({
