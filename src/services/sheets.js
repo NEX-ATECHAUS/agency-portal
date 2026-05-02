@@ -59,6 +59,8 @@ const SCHEMA = {
   notifications: ['id', 'type', 'title', 'message', 'read', 'action_url', 'created_at'],
   settings: ['key', 'value'],
   users: ['id', 'email', 'name', 'role', 'password_hash', 'created_at'],
+  tickets: ['id', 'subject', 'client_id', 'client_name', 'project_id', 'project_title', 'status', 'priority', 'description', 'thread_id', 'sender_email', 'assigned_to', 'resolved_at', 'notes', 'created_at'],
+  software_stack: ['id', 'client_id', 'client_name', 'app_name', 'category', 'url', 'version', 'notes', 'last_checked', 'last_update_found', 'update_summary', 'created_at'],
 };
 
 function rowsToObjects(rows) {
@@ -257,6 +259,52 @@ export const ExpensesAPI = {
 };
 
 // NOTIFICATIONS
+export const TicketsAPI = {
+  list: async () => readSheet('tickets'),
+  create: async (data) => {
+    const record = { id: `T_${Date.now()}_${Math.random().toString(36).substr(2,6)}`, ...data };
+    await appendRow('tickets', objectToRow('tickets', record));
+    return record;
+  },
+  update: async (id, data) => {
+    const rows = await readSheet('tickets');
+    const row = rows.find(r => r.id === id);
+    if (!row) throw new Error('Ticket not found');
+    const updated = { ...row, ...data };
+    await updateRow('tickets', row._rowIndex, objectToRow('tickets', updated));
+    return updated;
+  },
+  delete: async (id) => {
+    const rows = await readSheet('tickets');
+    const row = rows.find(r => r.id === id);
+    if (!row) throw new Error('Ticket not found');
+    await deleteRow('tickets', row._rowIndex);
+  },
+};
+
+export const SoftwareStackAPI = {
+  list: async () => readSheet('software_stack'),
+  create: async (data) => {
+    const record = { id: `SW_${Date.now()}_${Math.random().toString(36).substr(2,6)}`, ...data };
+    await appendRow('software_stack', objectToRow('software_stack', record));
+    return record;
+  },
+  update: async (id, data) => {
+    const rows = await readSheet('software_stack');
+    const row = rows.find(r => r.id === id);
+    if (!row) throw new Error('Entry not found');
+    const updated = { ...row, ...data };
+    await updateRow('software_stack', row._rowIndex, objectToRow('software_stack', updated));
+    return updated;
+  },
+  delete: async (id) => {
+    const rows = await readSheet('software_stack');
+    const row = rows.find(r => r.id === id);
+    if (!row) throw new Error('Entry not found');
+    await deleteRow('software_stack', row._rowIndex);
+  },
+};
+
 export const NotificationsAPI = {
   async list() { return readSheet('notifications'); },
   async create(data) {
