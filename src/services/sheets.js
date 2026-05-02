@@ -52,7 +52,7 @@ export async function deleteRow(sheetName, rowIndex) {
 const SCHEMA = {
   clients: ['id', 'name', 'email', 'phone', 'company', 'address', 'notes', 'created_at'],
   projects: ['id', 'title', 'client_id', 'client_name', 'type', 'status', 'current_stage', 'stage_completion', 'payment_stages', 'total_fee', 'start_date', 'end_date', 'description', 'notes', 'created_at'],
-  proposals: ['id', 'title', 'client_id', 'client_name', 'client_email', 'status', 'total_amount', 'payment_schedule', 'scope', 'deliverables', 'timeline', 'terms', 'valid_until', 'sent_at', 'responded_at', 'created_at'],
+  proposals: ['id', 'title', 'client_id', 'client_name', 'client_email', 'status', 'total_amount', 'payment_schedule', 'scope', 'deliverables', 'timeline', 'terms', 'valid_until', 'sent_at', 'responded_at', 'signed_by', 'signed_at', 'created_at'],
   invoices: ['id', 'invoice_number', 'project_id', 'project_title', 'client_id', 'client_name', 'client_email', 'client_address', 'stage', 'stage_description', 'line_items', 'charge_gst', 'amount', 'due_date', 'status', 'paid_at', 'sent_at', 'notes', 'created_at'],
   time_entries: ['id', 'project_id', 'project_title', 'stage', 'description', 'hours', 'billable', 'date', 'team_member', 'created_at'],
   expenses: ['id', 'description', 'category', 'amount', 'date', 'receipt_url', 'project_id', 'notes', 'created_at'],
