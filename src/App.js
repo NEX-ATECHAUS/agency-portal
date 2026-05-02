@@ -8,9 +8,11 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Proposals from './pages/Proposals';
 import Invoices from './pages/Invoices';
+
 import TimeTracking from './pages/TimeTracking';
 import Books from './pages/Books';
 import Clients from './pages/Clients';
+import Enquiries from './pages/Enquiries';
 import Settings from './pages/Settings';
 import ProposalView from './pages/ProposalView';
 import ThankYou from './pages/ThankYou';
@@ -44,6 +46,7 @@ function AppRoutes() {
         <Route path="time" element={<TimeTracking />} />
         <Route path="books" element={<Books />} />
         <Route path="clients" element={<Clients />} />
+        <Route path="enquiries" element={<Enquiries />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
