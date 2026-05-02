@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ClientsAPI, ProjectsAPI, InvoicesAPI } from '../services/sheets';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, Search, X, Upload, Download, Mail, Phone, Building, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, X, Upload, Download, Mail, Phone, Building, Edit2, Trash2, RefreshCw } from 'lucide-react';
 
 
 
@@ -17,6 +17,8 @@ export default function Clients() {
   const [editingClient, setEditingClient] = useState(null);
   const fileRef = useRef();
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', address: '', notes: '' });
+  const [scanning, setScanning] = useState(false);
+  const [enquiries, setEnquiries] = useState(null); // null = not scanned
 
   useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,7 +100,41 @@ export default function Clients() {
     a.href = url; a.download = 'clients_template.csv'; a.click();
   }
 
-  const filtered = clients.filter(c =>
+  async function scanEnquiries() {
+    setScanning(true);
+    setEnquiries(null);
+    try {
+      const res = await fetch('/api/inbox/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: new Date(Date.now() - 90 * 86400000).toISOString() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Scan failed');
+      setEnquiries(data.results || []);
+      if (!data.results?.length) toast.success(`Scanned ${data.threads_found} emails — no new enquiries found`);
+      else toast.success(`Found ${data.results.length} potential enquir${data.results.length === 1 ? 'y' : 'ies'}`);
+    } catch (err) { toast.error('Scan failed: ' + err.message); }
+    setScanning(false);
+  }
+
+  async function createClientFromEnquiry(enquiry) {
+    try {
+      const client = await ClientsAPI.create({
+        name: enquiry.contact_name || enquiry.sender.replace(/<.*>/, '').trim(),
+        email: enquiry.contact_email || '',
+        phone: enquiry.phone || '',
+        company: enquiry.company || '',
+        address: '',
+        notes: `Enquiry: ${enquiry.summary || enquiry.subject}`,
+      });
+      setClients(prev => [client, ...prev]);
+      setEnquiries(prev => prev.filter(e => e.msgId !== enquiry.msgId));
+      toast.success(`Client created — ${client.name}`);
+    } catch (err) { toast.error('Failed: ' + err.message); }
+  }
+
+    const filtered = clients.filter(c =>
     !search || (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.company || '').toLowerCase().includes(search.toLowerCase())
@@ -110,7 +146,44 @@ export default function Clients() {
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 0px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 0px)', overflow: 'hidden' }}>
+
+      {/* Enquiry scan results */}
+      {enquiries !== null && (
+        <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', padding: '16px 20px', flexShrink: 0, maxHeight: 320, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Inbox Enquiries</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>{enquiries.length} found</span>
+            </div>
+            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setEnquiries(null)}><X size={14} /></button>
+          </div>
+          {enquiries.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>No new enquiries found in the last 90 days</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {enquiries.map(eq => (
+                <div key={eq.msgId} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{eq.contact_name || eq.sender}</span>
+                      <span className={`badge ${eq.enquiry_type === 'new_lead' ? 'badge-green' : 'badge-blue'}`} style={{ fontSize: 10 }}>{(eq.enquiry_type || '').replace('_', ' ')}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>{eq.summary}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{eq.contact_email}{eq.company ? ` · ${eq.company}` : ''}{eq.phone ? ` · ${eq.phone}` : ''}</div>
+                    {eq.suggested_action && <div style={{ fontSize: 11, color: 'var(--accent-light)', marginTop: 3, fontStyle: 'italic' }}>→ {eq.suggested_action}</div>}
+                  </div>
+                  <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={() => createClientFromEnquiry(eq)}>
+                    <Plus size={12} /> Add Client
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {/* Client list */}
       <div style={{ width: 320, borderRight: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -119,6 +192,10 @@ export default function Clients() {
             <div style={{ display: 'flex', gap: 6 }}>
               <button className="btn btn-ghost btn-sm" onClick={downloadTemplate} title="Download CSV template"><Download size={14} /></button>
               <button className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()} title="Import CSV"><Upload size={14} /></button>
+              <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" onClick={scanEnquiries} disabled={scanning}>
+                {scanning ? <><RefreshCw size={13} style={{ animation: 'spin 0.7s linear infinite' }} /> Scanning...</> : <><Mail size={13} /> Scan Enquiries</>}
+              </button>
               <button className="btn btn-primary btn-sm" onClick={() => { setEditingClient(null); setForm({ name: '', email: '', phone: '', company: '', address: '', notes: '' }); setShowModal(true); }}>
                 <Plus size={14} />
               </button>
@@ -291,6 +368,8 @@ export default function Clients() {
           </div>
         </div>
       )}
+    </div>
+    </div>
     </div>
   );
 }
