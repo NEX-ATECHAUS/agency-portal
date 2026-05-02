@@ -12,7 +12,6 @@ import Invoices from './pages/Invoices';
 import TimeTracking from './pages/TimeTracking';
 import Books from './pages/Books';
 import Clients from './pages/Clients';
-import Enquiries from './pages/Enquiries';
 import Tickets from './pages/Tickets';
 import SoftwareStack from './pages/SoftwareStack';
 import Settings from './pages/Settings';
@@ -48,7 +47,6 @@ function AppRoutes() {
         <Route path="time" element={<TimeTracking />} />
         <Route path="books" element={<Books />} />
         <Route path="clients" element={<Clients />} />
-        <Route path="enquiries" element={<Enquiries />} />
         <Route path="tickets" element={<Tickets />} />
         <Route path="software" element={<SoftwareStack />} />
         <Route path="settings" element={<Settings />} />
