@@ -5,7 +5,7 @@ import { NotificationsAPI, SettingsAPI } from '../services/sheets';
 import {
   LayoutDashboard, FolderOpen, FileText, Receipt,
   Clock, BookOpen, Users, Settings, LogOut,
-  ChevronLeft, ChevronRight, Menu, Sun, Moon
+  ChevronLeft, ChevronRight, Menu, Sun, Moon, Inbox
 } from 'lucide-react';
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { path: '/time',      icon: Clock,            label: 'Time'      },
   { path: '/books',     icon: BookOpen,         label: 'Books'     },
   { path: '/clients',   icon: Users,            label: 'Clients'   },
+  { path: '/enquiries', icon: Inbox,            label: 'Enquiries' },
   { path: '/settings',  icon: Settings,         label: 'Settings'  },
 ];
 
