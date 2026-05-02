@@ -161,7 +161,12 @@ export default function ProposalView() {
     setActing('accept');
 
     try {
-      await ProposalsAPI.update(id, { status: 'accepted', responded_at: new Date().toISOString() });
+      await ProposalsAPI.update(id, {
+        status: 'accepted',
+        responded_at: new Date().toISOString(),
+        signed_by: signatureName.trim(),
+        signed_at: new Date().toISOString(),
+      });
 
       const project = await ProjectsAPI.create({
         title: proposal.title,
