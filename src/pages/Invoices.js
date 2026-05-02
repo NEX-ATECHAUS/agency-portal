@@ -19,8 +19,11 @@ function fmt(n) {
 }
 
 function nextInvoiceNumber(invoices) {
-  const nums = invoices.map(i => parseInt((i.invoice_number || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
-  return `INV-${String(nums.length ? Math.max(...nums) + 1 : 1001).padStart(4, '0')}`;
+  const nums = invoices
+    .map(i => parseInt((i.invoice_number || '').replace(/\D/g, ''), 10))
+    .filter(n => !isNaN(n) && n <= 9999); // ignore any long timestamp-based numbers
+  const next = nums.length ? Math.max(...nums) + 1 : 1001;
+  return `INV-${String(Math.min(next, 9999)).padStart(4, '0')}`;
 }
 
 function parseLineItems(raw, fallbackAmount, fallbackDesc) {
